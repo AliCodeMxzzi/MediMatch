@@ -13,6 +13,7 @@ public actor MedicalLLMService {
 
     private var model: ZeticMLangeLLMModel?
     private var generationTask: Task<Void, Never>?
+    private var warmUpTask: Task<Void, Never>?
 
     public init() {}
 
@@ -20,25 +21,50 @@ public actor MedicalLLMService {
         model?.forceDeinit()
     }
 
+    /// Lazily downloads / initializes the model. Concurrent callers share a
+    /// single in-flight warm-up so we never construct two LLMs at once.
     public func warmUp(onProgress: @Sendable @escaping (Double) -> Void = { _ in }) async {
-        guard model == nil else { return }
+        if model != nil { return }
+        if let existing = warmUpTask {
+            await existing.value
+            return
+        }
+        let task = Task { [weak self] in
+            await self?.performWarmUp(onProgress: onProgress)
+        }
+        warmUpTask = task
+        await task.value
+        if warmUpTask === task { warmUpTask = nil }
+    }
+
+    /// The synchronous SDK constructor performs blocking network + file I/O.
+    /// We run it on a detached task so the actor stays responsive to
+    /// `status` reads and `enrich(prompt:)` calls during the download.
+    private func performWarmUp(onProgress: @Sendable @escaping (Double) -> Void) async {
         status = .downloading(progress: 0)
+        let key  = AppConfig.personalKeyForSDK()
+        let name = AppConfig.ModelID.medicalAssistant
+
         do {
-            let m = try ZeticMLangeLLMModel(
-                personalKey: AppConfig.personalKeyForSDK(),
-                name: AppConfig.ModelID.medicalAssistant,
-                modelMode: .RUN_AUTO,
-                initOption: LLMInitOption(
-                    kvCacheCleanupPolicy: .CLEAN_UP_ON_FULL,
-                    nCtx: 4096
-                ),
-                onDownload: { progress in
-                    onProgress(Double(progress))
-                }
-            )
+            let m = try await Task.detached(priority: .utility) { () throws -> ZeticMLangeLLMModel in
+                try ZeticMLangeLLMModel(
+                    personalKey: key,
+                    name: name,
+                    modelMode: .RUN_AUTO,
+                    initOption: LLMInitOption(
+                        kvCacheCleanupPolicy: .CLEAN_UP_ON_FULL,
+                        nCtx: 4096
+                    ),
+                    onDownload: { progress in
+                        onProgress(Double(progress))
+                    }
+                )
+            }.value
             self.model = m
             self.status = .ready
+            self.telemetry.lastError = nil
         } catch {
+            self.model = nil
             self.status = .failed(message: sanitize(error))
             self.telemetry.lastError = sanitize(error)
         }

@@ -28,6 +28,7 @@ public actor PromptGuardService {
 
     private let tokenizer: PromptGuardTokenizer
     private var model: ZeticMLangeModel?
+    private var warmUpTask: Task<Void, Never>?
 
     /// Block sizes for the input/attention tensors. Keep aligned with
     /// `PromptGuardTokenizer.sequenceLength`.
@@ -39,22 +40,47 @@ public actor PromptGuardService {
     }
 
     /// Lazily downloads / initializes the model. Safe to call repeatedly;
-    /// only the first call performs work.
+    /// concurrent callers share a single in-flight warm-up so we never spin
+    /// up two `ZeticMLangeModel(...)` constructors at the same time.
     public func warmUp(onProgress: @Sendable @escaping (Double) -> Void = { _ in }) async {
-        guard model == nil else { return }
+        if model != nil { return }
+        if let existing = warmUpTask {
+            await existing.value
+            return
+        }
+        let task = Task { [weak self] in
+            await self?.performWarmUp(onProgress: onProgress)
+        }
+        warmUpTask = task
+        await task.value
+        if warmUpTask === task { warmUpTask = nil }
+    }
+
+    /// The actual init. The synchronous `ZeticMLangeModel(...)` constructor
+    /// performs blocking network + file I/O internally, so we run it on a
+    /// detached task. That lets the actor keep servicing `status` reads and
+    /// other calls (e.g. `classify`) during the download.
+    private func performWarmUp(onProgress: @Sendable @escaping (Double) -> Void) async {
         status = .downloading(progress: 0)
+        let key  = AppConfig.personalKeyForSDK()
+        let name = AppConfig.ModelID.promptGuard
+
         do {
-            let m = try ZeticMLangeModel(
-                personalKey: AppConfig.personalKeyForSDK(),
-                name: AppConfig.ModelID.promptGuard,
-                modelMode: .RUN_AUTO,
-                onDownload: { progress in
-                    onProgress(Double(progress))
-                }
-            )
+            let m = try await Task.detached(priority: .utility) { () throws -> ZeticMLangeModel in
+                try ZeticMLangeModel(
+                    personalKey: key,
+                    name: name,
+                    modelMode: .RUN_AUTO,
+                    onDownload: { progress in
+                        onProgress(Double(progress))
+                    }
+                )
+            }.value
             self.model = m
             self.status = .ready
+            self.telemetry.lastError = nil
         } catch {
+            self.model = nil
             self.status = .failed(message: Self.sanitize(error))
             self.telemetry.lastError = Self.sanitize(error)
         }
