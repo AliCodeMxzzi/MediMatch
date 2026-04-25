@@ -118,6 +118,18 @@ public actor MedicalLLMService {
         try? model?.cleanUp()
     }
 
+    /// Frees the loaded model after a prefetch. Weights stay on device in
+    /// the ZETIC cache (status `.onDevice`); `warmUp()` for inference is quick.
+    /// No-op if there is no loaded model (e.g. a failed download).
+    public func releaseFromMemory() async {
+        generationTask?.cancel()
+        generationTask = nil
+        guard model != nil else { return }
+        model?.forceDeinit()
+        model = nil
+        status = .onDevice
+    }
+
     private func sanitize(_ error: Error) -> String {
         String(describing: error).replacingOccurrences(of: AppConfig.personalKeyForSDK(), with: "<redacted>")
     }

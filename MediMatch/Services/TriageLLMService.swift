@@ -108,6 +108,16 @@ public actor TriageLLMService {
         try? model?.cleanUp()
     }
 
+    /// Frees the loaded LLM to avoid holding two large models in RAM (OOM on
+    /// iPhone). Artifacts stay on disk; the next `warmUp()` re-loads quickly.
+    public func releaseFromMemory() async {
+        generationTask?.cancel()
+        generationTask = nil
+        model?.forceDeinit()
+        model = nil
+        status = .idle
+    }
+
     /// Performs the model warm-up + cleanUp + run + token loop in a way that
     /// yields each token to the continuation.
     private func runStream(prompt: String, continuation: AsyncThrowingStream<String, Error>.Continuation) async throws {

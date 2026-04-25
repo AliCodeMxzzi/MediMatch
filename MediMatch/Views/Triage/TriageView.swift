@@ -153,6 +153,7 @@ struct TriageView: View {
         case .idle:        return "circle.dotted"
         case .downloading: return "arrow.down.circle"
         case .ready:       return "checkmark.seal"
+        case .onDevice:    return "externaldrive.fill"
         case .running:     return "waveform"
         case .failed:      return "xmark.circle"
         }
@@ -161,6 +162,7 @@ struct TriageView: View {
     private func color(for status: ModelStatus) -> Color {
         switch status {
         case .ready:       return .green
+        case .onDevice:    return .teal
         case .running:     return .accentColor
         case .failed:      return .red
         case .downloading: return .orange

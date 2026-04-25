@@ -55,9 +55,11 @@ public final class SettingsViewModel: ObservableObject {
 
     public func warmUpAllModels() {
         Task { [promptGuard, triage, medical] in
-            await promptGuard.warmUp()
-            await triage.warmUp()
-            await medical.warmUp()
+            await ZeticModelBootstrap.prefetchAll(
+                promptGuard: promptGuard,
+                triage: triage,
+                medical: medical
+            )
         }
     }
 

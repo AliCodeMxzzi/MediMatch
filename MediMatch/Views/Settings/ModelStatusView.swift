@@ -134,6 +134,7 @@ struct ModelStatusView: View {
     private func color(for status: ModelStatus) -> Color {
         switch status {
         case .ready:       return .green
+        case .onDevice:    return .teal
         case .running:     return .accentColor
         case .failed:      return .red
         case .downloading: return .orange
