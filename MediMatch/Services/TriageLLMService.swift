@@ -39,7 +39,7 @@ public actor TriageLLMService {
         }
         warmUpTask = task
         await task.value
-        if warmUpTask === task { warmUpTask = nil }
+        if warmUpTask == task { warmUpTask = nil }
     }
 
     /// The synchronous SDK constructor performs blocking network + file I/O.

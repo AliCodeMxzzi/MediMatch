@@ -54,7 +54,7 @@ public actor PromptGuardService {
         }
         warmUpTask = task
         await task.value
-        if warmUpTask === task { warmUpTask = nil }
+        if warmUpTask == task { warmUpTask = nil }
     }
 
     /// The actual init. The synchronous `ZeticMLangeModel(...)` constructor
