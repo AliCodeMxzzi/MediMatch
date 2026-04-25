@@ -4,101 +4,197 @@ struct TriageResultView: View {
     let result: TriageResult
     let highContrast: Bool
 
+    private var displaySummary: String {
+        TriageDisplayFormatting.summaryForDisplay(result.summary)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.spacingMD) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: "text.badge.checkmark")
+                    .font(.title2)
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityHidden(true)
+                Text(NSLocalizedString("triage.result.title",
+                    value: "Your triage result", comment: ""))
+                    .font(.system(.title3, design: .rounded, weight: .semibold))
+            }
+            .padding(.bottom, Theme.spacingMD)
+
             SeverityBadge(severity: result.severity,
                           confidence: result.severityConfidence,
                           highContrast: highContrast)
+                .padding(.bottom, Theme.spacingMD)
 
-            Text(result.summary)
-                .font(.system(.body, design: .rounded))
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityLabel(Text(NSLocalizedString("a11y.summary",
-                    value: "Triage summary", comment: "")))
+            VStack(alignment: .leading, spacing: Theme.spacingSM) {
+                Text(NSLocalizedString("triage.result.summaryLabel",
+                    value: "Summary", comment: ""))
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Text(displaySummary)
+                    .font(.system(.body, design: .rounded))
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(Text(NSLocalizedString("a11y.summary",
+                        value: "Triage summary", comment: "")))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.spacingMD)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
+                    .fill(Color(.tertiarySystemBackground))
+            )
+            .padding(.bottom, Theme.spacingLG)
 
             if !result.recommendedActions.isEmpty {
-                section(title: NSLocalizedString("triage.actions",
-                    value: "Recommended actions", comment: "")) {
-                    ForEach(result.recommendedActions, id: \.self) { action in
-                        bullet(action, icon: "checkmark.circle.fill", color: .accentColor)
+                sectionGroup(
+                    title: NSLocalizedString("triage.result.nextSteps",
+                        value: "Next steps", comment: ""),
+                    symbol: "arrow.triangle.branch"
+                ) {
+                    VStack(alignment: .leading, spacing: Theme.spacingMD) {
+                        ForEach(Array(result.recommendedActions.enumerated()), id: \.offset) { index, action in
+                            HStack(alignment: .top, spacing: 12) {
+                                Text("\(index + 1).")
+                                    .font(.system(.subheadline, design: .rounded, weight: .semibold).monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .frame(minWidth: 28, alignment: .trailing)
+                                Text(action)
+                                    .font(.system(.body, design: .rounded))
+                                    .lineSpacing(3)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
                     }
                 }
             }
 
             if !result.redFlags.isEmpty {
-                section(title: NSLocalizedString("triage.redFlags",
-                    value: "Red flags — seek care if these appear", comment: "")) {
-                    ForEach(result.redFlags, id: \.self) { flag in
-                        bullet(flag, icon: "exclamationmark.triangle.fill", color: .red)
+                VStack(alignment: .leading, spacing: Theme.spacingSM) {
+                    sectionHeader(
+                        NSLocalizedString("triage.redFlags",
+                            value: "Red flags — seek care if these appear", comment: ""),
+                        symbol: "exclamationmark.triangle.fill"
+                    )
+                    VStack(alignment: .leading, spacing: Theme.spacingSM) {
+                        ForEach(result.redFlags, id: \.self) { flag in
+                            actionRow(flag, icon: "exclamationmark.circle.fill", color: .red)
+                        }
                     }
                 }
+                .padding(Theme.spacingMD)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
+                        .fill(Color.red.opacity(highContrast ? 0.2 : 0.08))
+                )
+                .padding(.bottom, Theme.spacingLG)
             }
 
             if !result.candidates.isEmpty {
-                section(title: NSLocalizedString("triage.candidates",
-                    value: "Possible explanations", comment: "")) {
-                    ForEach(result.candidates) { candidate in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(candidate.name)
-                                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                                Spacer()
-                                Text(String(format: "%d%%", Int((candidate.confidence * 100).rounded())))
-                                    .font(.system(.caption, design: .monospaced))
-                                    .foregroundStyle(.secondary)
+                sectionGroup(
+                    title: NSLocalizedString("triage.candidates",
+                        value: "Possible explanations", comment: ""),
+                    symbol: "list.bullet.clipboard"
+                ) {
+                    VStack(alignment: .leading, spacing: Theme.spacingMD) {
+                        ForEach(result.candidates) { candidate in
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text(candidate.name)
+                                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                    Spacer(minLength: 8)
+                                    Text(String(format: "%d%%", Int((candidate.confidence * 100).rounded())))
+                                        .font(.system(.caption, design: .monospaced))
+                                        .foregroundStyle(.secondary)
+                                }
+                                ConfidenceBar(value: candidate.confidence)
+                                    .frame(height: 8)
+                                if !candidate.rationale.isEmpty {
+                                    Text(candidate.rationale)
+                                        .font(.system(.caption, design: .rounded))
+                                        .foregroundStyle(.secondary)
+                                        .lineSpacing(3)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
                             }
-                            ConfidenceBar(value: candidate.confidence)
-                                .frame(height: 8)
-                            if !candidate.rationale.isEmpty {
-                                Text(candidate.rationale)
-                                    .font(.system(.caption, design: .rounded))
-                                    .foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
+                            .padding(Theme.spacingMD)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
+                                    .fill(Color(.tertiarySystemBackground))
+                            )
                         }
-                        .padding(Theme.spacingSM)
-                        .background(
-                            RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
-                                .fill(Color(.secondarySystemBackground))
-                        )
                     }
                 }
             }
 
             if let enrichment = result.medicalEnrichment, !enrichment.isEmpty {
-                section(title: NSLocalizedString("triage.medical",
-                    value: "Medication & history check", comment: "")) {
+                sectionGroup(
+                    title: NSLocalizedString("triage.medical",
+                        value: "Medication & history check", comment: ""),
+                    symbol: "pills"
+                ) {
                     Text(enrichment)
                         .font(.system(.body, design: .rounded))
+                        .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(Theme.spacingMD)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
                             RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
-                                .fill(Color.accentColor.opacity(0.08))
+                                .fill(Color.accentColor.opacity(0.1))
                         )
                 }
             }
 
             disclaimer
         }
+        .padding(Theme.spacingMD)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusCard, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusCard, style: .continuous)
+                .strokeBorder(Color(.separator).opacity(0.35), lineWidth: 1)
+        )
     }
 
     @ViewBuilder
-    private func section<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func sectionGroup<Content: View>(
+        title: String,
+        symbol: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         VStack(alignment: .leading, spacing: Theme.spacingSM) {
+            sectionHeader(title, symbol: symbol)
+            content()
+        }
+        .padding(.bottom, Theme.spacingLG)
+    }
+
+    private func sectionHeader(_ title: String, symbol: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
             Text(title)
                 .font(.system(.headline, design: .rounded))
-            content()
         }
     }
 
-    private func bullet(_ text: String, icon: String, color: Color) -> some View {
+    @ViewBuilder
+    private func actionRow(_ text: String, icon: String, color: Color) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Image(systemName: icon).foregroundStyle(color)
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(color)
             Text(text)
                 .font(.system(.body, design: .rounded))
+                .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
         }
     }
 

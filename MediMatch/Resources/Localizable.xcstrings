@@ -130,6 +130,78 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Raisonnement…" } }
       }
     },
+    "triage.progress.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Working on your triage" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Preparando tu triaje" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Analyse de votre triage" } }
+      }
+    },
+    "triage.progress.subtitle.validating" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Checking that we can help with what you shared." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Comprobando que podemos ayudarte con lo que compartiste." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vérification que nous pouvons vous aider au mieux." } }
+      }
+    },
+    "triage.progress.subtitle.classifying" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Running a quick safety check on your text." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Haciendo una comprobación rápida de seguridad." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lancement d'une vérification de sécurité rapide." } }
+      }
+    },
+    "triage.progress.subtitle.generating" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Turning your symptoms into clear, plain-language advice." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Convirtiendo tus síntomas en orientación clara y sencilla." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Conversion de vos symptômes en conseils clairs et accessibles." } }
+      }
+    },
+    "triage.progress.subtitle.parsing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Lining up severity, next steps, and what to watch for." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Organizando gravedad, pasos a seguir y señales de alarma." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mise en forme de la gravité, des prochaines étapes et des signes à surveiller." } }
+      }
+    },
+    "triage.progress.subtitle.enriching" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Optionally factoring in your saved medications, if any." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cruzando, si aplica, con tus medicamentos guardados." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Prise en compte de vos médicaments enregistrés, le cas échéant." } }
+      }
+    },
+    "triage.result.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your triage result" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Resultado de tu triaje" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Résultat de votre triage" } }
+      }
+    },
+    "triage.result.summaryLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Summary" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Resumen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Résumé" } }
+      }
+    },
+    "triage.result.nextSteps" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Next steps" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Próximos pasos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Prochaines étapes" } }
+      }
+    },
     "severity.selfCare" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -143,8 +143,12 @@ public final class TriageViewModel: ObservableObject {
             case .validating: phase = .validating
             case .classifying: phase = .classifying
             case .generating: phase = .generating(progress: streamingText)
-            case .parsing:    phase = .parsing
-            case .enriching:  phase = .enriching
+            case .parsing:
+                streamingText = ""
+                phase = .parsing
+            case .enriching:
+                streamingText = ""
+                phase = .enriching
             case .done:       break
             }
         case .token(let token):

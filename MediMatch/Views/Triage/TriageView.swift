@@ -25,7 +25,7 @@ struct TriageView: View {
                     SymptomInputView(viewModel: viewModel)
                     actionsRow
                     progressSection
-                    streamingSection
+                    triageInProgressSection
                     if case .finished(let result) = viewModel.phase {
                         TriageResultView(result: result, highContrast: settings.highContrast)
                     }
@@ -171,28 +171,54 @@ struct TriageView: View {
     }
 
     @ViewBuilder
-    private var streamingSection: some View {
+    private var triageInProgressSection: some View {
         switch viewModel.phase {
-        case .generating, .parsing, .enriching:
-            VStack(alignment: .leading, spacing: 8) {
-                Text(NSLocalizedString("triage.streaming.title",
-                    value: "Reasoning…", comment: ""))
-                    .font(.system(.headline, design: .rounded))
-                ScrollView {
-                    Text(viewModel.streamingText)
-                        .font(.system(.callout, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(Theme.spacingSM)
+        case .validating, .classifying, .generating, .parsing, .enriching:
+            VStack(alignment: .leading, spacing: Theme.spacingMD) {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.spacingMD) {
+                    ProgressView()
+                        .tint(.accentColor)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(NSLocalizedString("triage.progress.title",
+                            value: "Working on your triage", comment: ""))
+                            .font(.system(.headline, design: .rounded))
+                        Text(triageProgressSubtitle)
+                            .font(.system(.subheadline, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                .frame(maxHeight: 220)
-                .background(
-                    RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
-                        .fill(Color(.tertiarySystemBackground))
-                )
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.spacingMD)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusCard, style: .continuous)
+                    .fill(Color(.secondarySystemBackground))
+            )
         default:
             EmptyView()
+        }
+    }
+
+    private var triageProgressSubtitle: String {
+        switch viewModel.phase {
+        case .validating:
+            return NSLocalizedString("triage.progress.subtitle.validating",
+                value: "Checking that we can help with what you shared.", comment: "")
+        case .classifying:
+            return NSLocalizedString("triage.progress.subtitle.classifying",
+                value: "Running a quick safety check on your text.", comment: "")
+        case .generating:
+            return NSLocalizedString("triage.progress.subtitle.generating",
+                value: "Turning your symptoms into clear, plain-language advice.", comment: "")
+        case .parsing:
+            return NSLocalizedString("triage.progress.subtitle.parsing",
+                value: "Lining up severity, next steps, and what to watch for.", comment: "")
+        case .enriching:
+            return NSLocalizedString("triage.progress.subtitle.enriching",
+                value: "Optionally factoring in your saved medications, if any.", comment: "")
+        default:
+            return ""
         }
     }
 }
