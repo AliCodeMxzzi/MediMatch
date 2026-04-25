@@ -1,7 +1,7 @@
 import Foundation
 
-/// Coordinates the full triage pipeline:
-/// `HeuristicSafetyFilter → PromptGuardService → TriageLLMService → MedicalLLMService`.
+/// Coordinates the triage pipeline:
+/// `HeuristicSafetyFilter → PromptGuardService → TriageLLMService`.
 ///
 /// Streaming model: callers receive incremental token chunks via a
 /// continuation, then a final `TriageResult` once parsing finishes.
@@ -22,7 +22,6 @@ public actor TriageOrchestrator {
         case validating
         case classifying
         case generating
-        case enriching
         case parsing
         case done
     }
@@ -30,7 +29,6 @@ public actor TriageOrchestrator {
     private let safetyFilter: HeuristicSafetyFilter
     private let promptGuard: PromptGuardService
     private let triageLLM:   TriageLLMService
-    private let medicalLLM:  MedicalLLMService
     private let persistence: PersistenceService
 
     /// Probability threshold above which the prompt-guard model's
@@ -41,13 +39,11 @@ public actor TriageOrchestrator {
         safetyFilter: HeuristicSafetyFilter = .init(),
         promptGuard:  PromptGuardService,
         triageLLM:    TriageLLMService,
-        medicalLLM:   MedicalLLMService,
         persistence:  PersistenceService
     ) {
         self.safetyFilter = safetyFilter
         self.promptGuard  = promptGuard
         self.triageLLM    = triageLLM
-        self.medicalLLM   = medicalLLM
         self.persistence  = persistence
     }
 
@@ -68,7 +64,6 @@ public actor TriageOrchestrator {
 
     public func cancel() async {
         await triageLLM.stop()
-        await medicalLLM.stop()
     }
 
     // MARK: - Pipeline
@@ -170,39 +165,6 @@ public actor TriageOrchestrator {
             )
         }
 
-        // 5) Medical enrichment (local_data_management)
-        //
-        // Load MedGemma **only after** dropping the triage LLM (and prompt
-        // guard) from RAM. Keeping Gemma 3n + MedGemma + classifier alive at
-        // once commonly jetsams the app on physical iPhones during
-        // `ZeticMLangeLLMModel` init. The next triage run will re-warm PG + triage.
-        send(.stage(.enriching))
-        await triageLLM.releaseFromMemory()
-        await promptGuard.reset()
-        for _ in 0..<3 { await Task.yield() }
-        // Give the system time to reclaim triage/weights before the heavy MedGemma
-        // constructor; pairs with `ZeticModelPeers` + `ZeticLLMInitGate` in services.
-        try? await Task.sleep(nanoseconds: 800_000_000)
-
-        let activeMeds = await persistence.activeMedications()
-        let enrichmentPrompt = PromptTemplates.medicalEnrichmentPrompt(
-            symptoms: symptoms,
-            triageSummary: result.summary,
-            activeMedications: activeMeds,
-            locale: locale
-        )
-        let enrichment: String?
-        do {
-            let text = try await medicalLLM.enrich(prompt: enrichmentPrompt)
-            enrichment = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : text
-        } catch {
-            enrichment = nil
-        }
-
-        // Free MedGemma until the next enrichment so a second “Get triage” is
-        // not forced to hold two large LLMs if the user runs again soon.
-        await medicalLLM.releaseFromMemory()
-
         let finalResult = TriageResult(
             id: result.id,
             createdAt: result.createdAt,
@@ -213,7 +175,7 @@ public actor TriageOrchestrator {
             recommendedActions: result.recommendedActions,
             redFlags: result.redFlags,
             candidates: result.candidates,
-            medicalEnrichment: enrichment
+            medicalEnrichment: nil
         )
 
         await persistence.appendHistory(HistoryEntry(result: finalResult))

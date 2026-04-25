@@ -19,6 +19,7 @@ public struct TriageResult: Codable, Hashable, Sendable, Identifiable {
     public let recommendedActions: [String]
     public let redFlags: [String]
     public let candidates: [CandidateCondition]
+    /// Preserved for Codable compatibility with older saved history; new runs keep this `nil`.
     public let medicalEnrichment: String?
 
     public init(

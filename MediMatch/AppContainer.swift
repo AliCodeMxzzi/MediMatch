@@ -12,7 +12,6 @@ public final class AppContainer: ObservableObject {
     public let persistence:  PersistenceService
     public let promptGuard:  PromptGuardService
     public let triage:       TriageLLMService
-    public let medical:      MedicalLLMService
     public let orchestrator: TriageOrchestrator
 
     public let location:     LocationService
@@ -25,7 +24,6 @@ public final class AppContainer: ObservableObject {
         persistence:   PersistenceService,
         promptGuard:   PromptGuardService,
         triage:        TriageLLMService,
-        medical:       MedicalLLMService,
         orchestrator:  TriageOrchestrator,
         location:      LocationService,
         clinicFinder:  ClinicFinder,
@@ -36,7 +34,6 @@ public final class AppContainer: ObservableObject {
         self.persistence   = persistence
         self.promptGuard   = promptGuard
         self.triage        = triage
-        self.medical       = medical
         self.orchestrator  = orchestrator
         self.location      = location
         self.clinicFinder  = clinicFinder
@@ -58,12 +55,9 @@ public final class AppContainer: ObservableObject {
 
         let promptGuard = PromptGuardService()
         let triage      = TriageLLMService()
-        let medical     = MedicalLLMService()
-        ZeticModelPeers.register(triage: triage, medical: medical)
         let orchestrator = TriageOrchestrator(
             promptGuard: promptGuard,
             triageLLM:   triage,
-            medicalLLM:  medical,
             persistence: persistence
         )
 
@@ -73,7 +67,6 @@ public final class AppContainer: ObservableObject {
             persistence:   persistence,
             promptGuard:   promptGuard,
             triage:        triage,
-            medical:       medical,
             orchestrator:  orchestrator,
             location:      LocationService(),
             clinicFinder:  ClinicFinder(),
@@ -95,9 +88,7 @@ public final class AppContainer: ObservableObject {
         return container
     }
 
-    /// Pre-fetches Prompt Guard + Triage only. The medical LLM is loaded on
-    /// demand when enrichment runs (see `TriageOrchestrator`); pre-loading it
-    /// jetsams many iPhones.
+    /// Pre-fetches the Prompt Guard and Triage models in the background.
     public func warmUpModelsInBackground() {
         let pg = promptGuard
         let tr = triage
@@ -110,4 +101,3 @@ public final class AppContainer: ObservableObject {
         }
     }
 }
-

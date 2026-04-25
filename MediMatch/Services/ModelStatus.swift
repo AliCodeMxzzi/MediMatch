@@ -6,8 +6,7 @@ public enum ModelStatus: Equatable, Sendable {
     case downloading(progress: Double)
     case ready
     /// Weights are on device (ZETIC cache) but the model is not in RAM, so
-    /// a later `warmUp()` is fast. Used for Medical LLM after a prefetch
-    /// unload to avoid OOM with two large LLMs at once.
+    /// a later `warmUp()` is fast.
     case onDevice
     case running
     case failed(message: String)

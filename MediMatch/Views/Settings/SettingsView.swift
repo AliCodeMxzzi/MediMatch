@@ -8,7 +8,6 @@ struct SettingsView: View {
             persistence:   container.persistence,
             promptGuard:   container.promptGuard,
             triage:        container.triage,
-            medical:       container.medical,
             notifications: container.notifications
         ))
     }

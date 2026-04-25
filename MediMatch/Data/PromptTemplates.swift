@@ -45,52 +45,6 @@ public enum PromptTemplates {
         Respond with JSON only.
         """
     }
-
-    /// Medical enrichment prompt for `Steve/Medgemma-1.5-4b-it`.
-    ///
-    /// Used to summarize the user's local data (active medications, recent
-    /// triage history) in plain language and to flag potential drug-symptom
-    /// interactions. Output is plain text shown to the user.
-    public static func medicalEnrichmentPrompt(
-        symptoms: String,
-        triageSummary: String,
-        activeMedications: [Medication],
-        locale: Locale
-    ) -> String {
-        let lang = locale.language.languageCode?.identifier ?? "en"
-        let medsBlock: String
-        if activeMedications.isEmpty {
-            medsBlock = "(none recorded)"
-        } else {
-            medsBlock = activeMedications
-                .map { "- \($0.name) \($0.dosage), \($0.schedule.cadence.displayName)" }
-                .joined(separator: "\n")
-        }
-
-        return """
-        You are a medical-domain assistant running on the user's phone.
-        The user has just received a triage assessment. Your job is to:
-
-        1. Summarize, in 2-3 sentences, anything the user should be careful about
-           given their currently active medications.
-        2. Mention any plausible interactions or contraindications between the
-           reported symptoms and these medications.
-        3. Be cautious. Never recommend stopping a medication. Always defer to
-           a licensed clinician.
-
-        Output: 2-4 short paragraphs, plain text, no markdown, no JSON.
-        Output language: "\(lang)".
-
-        Reported symptoms:
-        \(symptoms.trimmed(maxChars: 600))
-
-        Triage summary:
-        \(triageSummary.trimmed(maxChars: 600))
-
-        Active medications:
-        \(medsBlock)
-        """
-    }
 }
 
 private extension String {

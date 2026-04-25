@@ -39,18 +39,12 @@ public enum AppConfig {
         /// Gemma 3n E2B IT — primary triage recommender LLM.
         /// Used for `recommendation_system`.
         public static let triageRecommender = "google/gemma-3n-E2B-it"
-
-        /// MedGemma 1.5 4B IT — medical-domain LLM used for
-        /// `local_data_management` (medication interactions, history summaries).
-        public static let medicalAssistant = "Steve/Medgemma-1.5-4b-it"
     }
 
     // MARK: - Inference modes
 
-    /// Triage + medical ZETIC LLMs: context length (smaller = less RAM; medical
-    /// only runs short prompts so we keep it lower to reduce jetsam on iPhone).
+    /// Triage ZETIC LLM context (smaller = less RAM on device).
     public static let triageLLMContextTokens = 4096
-    public static let medicalLLMContextTokens = 2048
 
     /// Mapping requested by the prompt: `auto → RUN_AUTO`.
     public static let inferenceModeName = "RUN_AUTO"

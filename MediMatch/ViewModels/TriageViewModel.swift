@@ -15,7 +15,6 @@ public final class TriageViewModel: ObservableObject {
         case classifying
         case generating(progress: String)
         case parsing
-        case enriching
         case finished(TriageResult)
         case failed(String)
     }
@@ -29,7 +28,6 @@ public final class TriageViewModel: ObservableObject {
 
     @Published public var promptGuardStatus: ModelStatus = .idle
     @Published public var triageStatus:      ModelStatus = .idle
-    @Published public var medicalStatus:     ModelStatus = .idle
 
     public var canSubmit: Bool {
         if case .idle = phase { return !composedInput.isEmpty }
@@ -63,7 +61,6 @@ public final class TriageViewModel: ObservableObject {
     private let orchestrator: TriageOrchestrator
     private let promptGuard:  PromptGuardService
     private let triage:       TriageLLMService
-    private let medical:      MedicalLLMService
     private let settings:     AccessibilitySettings
 
     private var pollTask: Task<Void, Never>?
@@ -73,13 +70,11 @@ public final class TriageViewModel: ObservableObject {
         orchestrator: TriageOrchestrator,
         promptGuard:  PromptGuardService,
         triage:       TriageLLMService,
-        medical:      MedicalLLMService,
         settings:     AccessibilitySettings
     ) {
         self.orchestrator = orchestrator
         self.promptGuard  = promptGuard
         self.triage       = triage
-        self.medical      = medical
         self.settings     = settings
         self.pollTask = Task { [weak self] in await self?.pollStatuses() }
     }
@@ -146,9 +141,6 @@ public final class TriageViewModel: ObservableObject {
             case .parsing:
                 streamingText = ""
                 phase = .parsing
-            case .enriching:
-                streamingText = ""
-                phase = .enriching
             case .done:       break
             }
         case .token(let token):
@@ -170,7 +162,6 @@ public final class TriageViewModel: ObservableObject {
         while !Task.isCancelled {
             self.promptGuardStatus = await promptGuard.status
             self.triageStatus      = await triage.status
-            self.medicalStatus     = await medical.status
             try? await Task.sleep(nanoseconds: 600_000_000)
         }
     }

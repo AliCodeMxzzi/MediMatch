@@ -7,16 +7,13 @@ public final class SettingsViewModel: ObservableObject {
 
     @Published public var promptGuardStatus: ModelStatus = .idle
     @Published public var triageStatus:      ModelStatus = .idle
-    @Published public var medicalStatus:     ModelStatus = .idle
 
     @Published public var promptGuardTelemetry: InferenceTelemetry = .init()
     @Published public var triageTelemetry:      InferenceTelemetry = .init()
-    @Published public var medicalTelemetry:     InferenceTelemetry = .init()
 
     private let persistence: PersistenceService
     private let promptGuard:  PromptGuardService
     private let triage:       TriageLLMService
-    private let medical:      MedicalLLMService
     private let notifications: NotificationService
 
     private var pollTask: Task<Void, Never>?
@@ -25,13 +22,11 @@ public final class SettingsViewModel: ObservableObject {
         persistence: PersistenceService,
         promptGuard: PromptGuardService,
         triage: TriageLLMService,
-        medical: MedicalLLMService,
         notifications: NotificationService
     ) {
         self.persistence  = persistence
         self.promptGuard  = promptGuard
         self.triage       = triage
-        self.medical      = medical
         self.notifications = notifications
         Task { [weak self] in await self?.refreshStorage() }
         pollTask = Task { [weak self] in await self?.pollStatuses() }
@@ -66,10 +61,8 @@ public final class SettingsViewModel: ObservableObject {
         while !Task.isCancelled {
             self.promptGuardStatus = await promptGuard.status
             self.triageStatus      = await triage.status
-            self.medicalStatus     = await medical.status
             self.promptGuardTelemetry = await promptGuard.telemetry
             self.triageTelemetry      = await triage.telemetry
-            self.medicalTelemetry     = await medical.telemetry
             try? await Task.sleep(nanoseconds: 1_000_000_000)
         }
     }

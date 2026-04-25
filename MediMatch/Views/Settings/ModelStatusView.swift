@@ -28,13 +28,6 @@ struct ModelStatusView: View {
                     purpose: NSLocalizedString("models.purpose.recommend",
                         value: "recommendation_system", comment: "")
                 )
-                routingRow(
-                    task: NSLocalizedString("models.task.medical",
-                        value: "Medication & history check", comment: ""),
-                    model: AppConfig.ModelID.medicalAssistant,
-                    purpose: NSLocalizedString("models.purpose.medical",
-                        value: "local_data_management", comment: "")
-                )
             }
 
             Section(header: Text(NSLocalizedString("models.section.status",
@@ -49,11 +42,6 @@ struct ModelStatusView: View {
                     status: viewModel.triageStatus,
                     telemetry: viewModel.triageTelemetry
                 )
-                statusRow(
-                    name: NSLocalizedString("model.medical", value: "Medical LLM", comment: ""),
-                    status: viewModel.medicalStatus,
-                    telemetry: viewModel.medicalTelemetry
-                )
             }
 
             Section {
@@ -66,7 +54,7 @@ struct ModelStatusView: View {
                 }
             } footer: {
                 Text(NSLocalizedString("models.warmUp.note",
-                    value: "Prompt Guard and Triage can be pre-downloaded here. The Medical model downloads the first time you run Get triage (enrichment step) to avoid overloading device memory. After that, inference is offline.",
+                    value: "Prompt Guard and Triage can be pre-downloaded here. After the first download, triage runs fully offline on your device.",
                     comment: ""))
             }
 

@@ -9,7 +9,6 @@ struct TriageView: View {
             orchestrator: container.orchestrator,
             promptGuard:  container.promptGuard,
             triage:       container.triage,
-            medical:      container.medical,
             settings:     container.settings
         ))
     }
@@ -125,9 +124,8 @@ struct TriageView: View {
 
     private var progressSection: some View {
         VStack(alignment: .leading, spacing: Theme.spacingSM) {
-            modelStatusRow(label: NSLocalizedString("model.guard",   value: "Prompt Guard",  comment: ""), status: viewModel.promptGuardStatus)
+            modelStatusRow(label: NSLocalizedString("model.guard",  value: "Prompt Guard", comment: ""), status: viewModel.promptGuardStatus)
             modelStatusRow(label: NSLocalizedString("model.triage",  value: "Triage LLM",    comment: ""), status: viewModel.triageStatus)
-            modelStatusRow(label: NSLocalizedString("model.medical", value: "Medical LLM",   comment: ""), status: viewModel.medicalStatus)
         }
         .padding(Theme.spacingSM)
         .background(
@@ -173,7 +171,7 @@ struct TriageView: View {
     @ViewBuilder
     private var triageInProgressSection: some View {
         switch viewModel.phase {
-        case .validating, .classifying, .generating, .parsing, .enriching:
+        case .validating, .classifying, .generating, .parsing:
             VStack(alignment: .leading, spacing: Theme.spacingMD) {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.spacingMD) {
                     ProgressView()
@@ -214,9 +212,6 @@ struct TriageView: View {
         case .parsing:
             return NSLocalizedString("triage.progress.subtitle.parsing",
                 value: "Lining up severity, next steps, and what to watch for.", comment: "")
-        case .enriching:
-            return NSLocalizedString("triage.progress.subtitle.enriching",
-                value: "Optionally factoring in your saved medications, if any.", comment: "")
         default:
             return ""
         }
