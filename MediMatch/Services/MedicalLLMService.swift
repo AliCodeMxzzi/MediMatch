@@ -30,7 +30,8 @@ public actor MedicalLLMService {
             return
         }
         let task = Task { [weak self] in
-            await self?.performWarmUp(onProgress: onProgress)
+            guard let self else { return }
+            await self.performWarmUp(onProgress: onProgress)
         }
         warmUpTask = task
         await task.value
