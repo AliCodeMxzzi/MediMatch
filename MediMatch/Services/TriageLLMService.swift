@@ -61,7 +61,11 @@ public actor TriageLLMService {
                         nCtx: 4096
                     ),
                     onDownload: { progress in
-                        onProgress(Double(progress))
+                        let p = Self.normalizeProgress(progress)
+                        onProgress(p)
+                        Task { [weak self] in
+                            await self?.setDownloadProgress(p)
+                        }
                     }
                 )
             }.value
@@ -143,5 +147,18 @@ public actor TriageLLMService {
 
     private func sanitize(_ error: Error) -> String {
         String(describing: error).replacingOccurrences(of: AppConfig.personalKeyForSDK(), with: "<redacted>")
+    }
+
+    private func setDownloadProgress(_ p: Double) {
+        status = .downloading(progress: Self.clamp01(p))
+    }
+
+    private static func normalizeProgress(_ value: some BinaryFloatingPoint) -> Double {
+        let d = Double(value)
+        return d > 1.0 ? d / 100.0 : d
+    }
+
+    private static func clamp01(_ p: Double) -> Double {
+        min(1, max(0, p))
     }
 }

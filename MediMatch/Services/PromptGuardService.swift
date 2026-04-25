@@ -73,7 +73,12 @@ public actor PromptGuardService {
                     name: name,
                     modelMode: .RUN_AUTO,
                     onDownload: { progress in
-                        onProgress(Double(progress))
+                        let p = Self.normalizeProgress(progress)
+                        onProgress(p)
+                        // Hop back to the actor; otherwise UI stays on "0%%" forever.
+                        Task { [weak self] in
+                            await self?.setDownloadProgress(p)
+                        }
                     }
                 )
             }.value
@@ -130,6 +135,20 @@ public actor PromptGuardService {
     }
 
     // MARK: - Private helpers
+
+    private func setDownloadProgress(_ p: Double) {
+        status = .downloading(progress: Self.clamp01(p))
+    }
+
+    private static func normalizeProgress(_ value: some BinaryFloatingPoint) -> Double {
+        let d = Double(value)
+        // SDK may report 0…1 or 0…100.
+        return d > 1.0 ? d / 100.0 : d
+    }
+
+    private static func clamp01(_ p: Double) -> Double {
+        min(1, max(0, p))
+    }
 
     private func makeInt32Tensor(_ values: [Int32]) -> Tensor {
         let data = values.withUnsafeBufferPointer { Data(buffer: $0) }
