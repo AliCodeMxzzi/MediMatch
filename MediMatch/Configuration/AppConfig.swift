@@ -47,6 +47,11 @@ public enum AppConfig {
 
     // MARK: - Inference modes
 
+    /// Triage + medical ZETIC LLMs: context length (smaller = less RAM; medical
+    /// only runs short prompts so we keep it lower to reduce jetsam on iPhone).
+    public static let triageLLMContextTokens = 4096
+    public static let medicalLLMContextTokens = 2048
+
     /// Mapping requested by the prompt: `auto → RUN_AUTO`.
     public static let inferenceModeName = "RUN_AUTO"
 

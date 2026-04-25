@@ -1,35 +1,24 @@
 import Foundation
 
-/// Sequences ZETIC model fetch so the device does not load **two large LLMs**
-/// (Gemma 3n + MedGemma) in RAM at the same time, which can crash the app
-/// with a jetsam / OOM exit on a physical iPhone.
+/// Pre-warms only the **Prompt Guard** and **Triage** models at launch.
 ///
-/// Order:
-/// 1. Prompt guard (small)
-/// 2. Triage LLM (large) — then **release** to free memory
-/// 3. Medical LLM (large) — **release**; keeps `.onDevice` (cached weights)
-/// 4. Triage again — re-loads from on-disk cache; typical triage path is ready
+/// The **Medical** (MedGemma) model is **not** prefetched: even after unloading
+/// Triage, initializing that 4B-class model on top of the prompt-guard graph
+/// still jetsams many iPhones. MedGemma is downloaded and loaded **only** when
+/// a triage run reaches the enrichment step, after we release the triage LLM
+/// from RAM (`TriageOrchestrator`).
 ///
-/// Subsequent app launches: each `warmUp()` hits the local cache, so
-/// the sequence completes quickly and does not re-download.
+/// Sequential warm-up avoids concurrent ZETIC init races; see earlier crash
+/// reports from parallel `ZeticMLange*Model` constructors.
 public enum ZeticModelBootstrap {
 
+    /// Pre-warms Prompt Guard + Triage only. Medical LLM is loaded on demand
+    /// during triage enrichment (see `TriageOrchestrator`).
     public static func prefetchAll(
         promptGuard: PromptGuardService,
-        triage: TriageLLMService,
-        medical: MedicalLLMService
+        triage: TriageLLMService
     ) async {
         await promptGuard.warmUp()
-
-        await triage.warmUp()
-        await triage.releaseFromMemory()
-        // Let the OS reclaim RAM before the next large `ZeticMLangeLLMModel` init.
-        try? await Task.sleep(nanoseconds: 300_000_000)
-
-        await medical.warmUp()
-        await medical.releaseFromMemory()
-        try? await Task.sleep(nanoseconds: 200_000_000)
-
         await triage.warmUp()
     }
 }

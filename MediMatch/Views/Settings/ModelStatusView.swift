@@ -61,12 +61,12 @@ struct ModelStatusView: View {
                     viewModel.warmUpAllModels()
                 } label: {
                     Label(NSLocalizedString("models.warmUp",
-                        value: "Pre-download all models", comment: ""),
+                        value: "Pre-download classifier + triage", comment: ""),
                           systemImage: "arrow.down.circle")
                 }
             } footer: {
                 Text(NSLocalizedString("models.warmUp.note",
-                    value: "Models are fetched from ZETIC Melange the first time they're used. After that, all inference happens offline.",
+                    value: "Prompt Guard and Triage can be pre-downloaded here. The Medical model downloads the first time you run Get triage (enrichment step) to avoid overloading device memory. After that, inference is offline.",
                     comment: ""))
             }
 

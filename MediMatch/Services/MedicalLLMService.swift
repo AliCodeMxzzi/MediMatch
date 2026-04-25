@@ -54,7 +54,7 @@ public actor MedicalLLMService {
                     modelMode: .RUN_AUTO,
                     initOption: LLMInitOption(
                         kvCacheCleanupPolicy: .CLEAN_UP_ON_FULL,
-                        nCtx: 4096
+                        nCtx: AppConfig.medicalLLMContextTokens
                     ),
                     onDownload: { progress in
                         let p = Self.normalizeProgress(progress)

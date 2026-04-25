@@ -94,19 +94,17 @@ public final class AppContainer: ObservableObject {
         return container
     }
 
-    /// Pre-fetches all three ZETIC models in a **memory-safe** order. Loading
-    /// two large `ZeticMLangeLLMModel` instances at once can jetsam the app on
-    /// a physical iPhone; see `ZeticModelBootstrap.prefetchAll`.
+    /// Pre-fetches Prompt Guard + Triage only. The medical LLM is loaded on
+    /// demand when enrichment runs (see `TriageOrchestrator`); pre-loading it
+    /// jetsams many iPhones.
     public func warmUpModelsInBackground() {
         let pg = promptGuard
         let tr = triage
-        let md = medical
         Task.detached(priority: .utility) {
             try? await Task.sleep(nanoseconds: 250_000_000)
             await ZeticModelBootstrap.prefetchAll(
                 promptGuard: pg,
-                triage: tr,
-                medical: md
+                triage: tr
             )
         }
     }

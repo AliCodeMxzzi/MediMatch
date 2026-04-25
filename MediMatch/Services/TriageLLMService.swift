@@ -58,7 +58,7 @@ public actor TriageLLMService {
                     modelMode: .RUN_AUTO,
                     initOption: LLMInitOption(
                         kvCacheCleanupPolicy: .CLEAN_UP_ON_FULL,
-                        nCtx: 4096
+                        nCtx: AppConfig.triageLLMContextTokens
                     ),
                     onDownload: { progress in
                         let p = Self.normalizeProgress(progress)

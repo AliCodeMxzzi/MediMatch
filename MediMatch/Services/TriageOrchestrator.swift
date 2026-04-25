@@ -171,7 +171,16 @@ public actor TriageOrchestrator {
         }
 
         // 5) Medical enrichment (local_data_management)
+        //
+        // Load MedGemma **only after** dropping the triage LLM (and prompt
+        // guard) from RAM. Keeping Gemma 3n + MedGemma + classifier alive at
+        // once commonly jetsams the app on physical iPhones during
+        // `ZeticMLangeLLMModel` init. The next triage run will re-warm PG + triage.
         send(.stage(.enriching))
+        await triageLLM.releaseFromMemory()
+        await promptGuard.reset()
+        try? await Task.sleep(nanoseconds: 500_000_000)
+
         let activeMeds = await persistence.activeMedications()
         let enrichmentPrompt = PromptTemplates.medicalEnrichmentPrompt(
             symptoms: symptoms,
@@ -186,6 +195,10 @@ public actor TriageOrchestrator {
         } catch {
             enrichment = nil
         }
+
+        // Free MedGemma until the next enrichment so a second “Get triage” is
+        // not forced to hold two large LLMs if the user runs again soon.
+        await medicalLLM.releaseFromMemory()
 
         let finalResult = TriageResult(
             id: result.id,
