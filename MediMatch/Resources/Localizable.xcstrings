@@ -1,0 +1,246 @@
+{
+  "sourceLanguage" : "en",
+  "version" : "1.0",
+  "strings" : {
+    "tab.triage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Triage" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Triaje" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Triage" } }
+      }
+    },
+    "tab.clinics" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clinics" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Clínicas" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cliniques" } }
+      }
+    },
+    "tab.meds" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Medications" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Medicamentos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Médicaments" } }
+      }
+    },
+    "tab.history" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "History" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Historial" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Historique" } }
+      }
+    },
+    "tab.settings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ajustes" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réglages" } }
+      }
+    },
+    "triage.input.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Describe what you're feeling" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Describe lo que sientes" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Décrivez ce que vous ressentez" } }
+      }
+    },
+    "triage.input.placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "e.g. fever for two days, dry cough, mild chest pain when breathing." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "p. ej. fiebre durante dos días, tos seca, dolor leve al respirar." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "ex. fièvre depuis deux jours, toux sèche, légère douleur thoracique." } }
+      }
+    },
+    "triage.catalog.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Or pick from common symptoms" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "O elige de los síntomas comunes" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ou choisissez parmi les symptômes courants" } }
+      }
+    },
+    "triage.voice.start" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Voice input" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Entrada por voz" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Entrée vocale" } }
+      }
+    },
+    "triage.voice.stop" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Detener" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Arrêter" } }
+      }
+    },
+    "triage.submit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Get triage" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Hacer triaje" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Évaluer" } }
+      }
+    },
+    "triage.cancel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } }
+      }
+    },
+    "triage.reset" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Borrar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer" } }
+      }
+    },
+    "triage.thinking" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Working…" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Procesando…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Traitement…" } }
+      }
+    },
+    "triage.privacy.note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "All inference runs on your device. No symptoms leave your phone." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Todo el análisis ocurre en tu dispositivo. Tus síntomas nunca salen del teléfono." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout fonctionne sur votre appareil. Vos symptômes ne quittent jamais le téléphone." } }
+      }
+    },
+    "triage.streaming.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reasoning…" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Razonando…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Raisonnement…" } }
+      }
+    },
+    "severity.selfCare" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Self-care" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Autocuidado" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Auto-soins" } }
+      }
+    },
+    "severity.urgentCare" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Urgent care" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Atención urgente" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Soins urgents" } }
+      }
+    },
+    "severity.emergency" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Emergency" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Emergencia" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Urgence" } }
+      }
+    },
+    "severity.unknown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unclear" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No claro" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Non clair" } }
+      }
+    },
+    "language.en" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "English" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Inglés" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Anglais" } }
+      }
+    },
+    "language.es" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Spanish" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Español" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Espagnol" } }
+      }
+    },
+    "language.fr" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "French" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Francés" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Français" } }
+      }
+    },
+    "common.cancel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } }
+      }
+    },
+    "common.save" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Guardar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Enregistrer" } }
+      }
+    },
+    "common.delete" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Eliminar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer" } }
+      }
+    },
+    "common.edit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Edit" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Editar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Modifier" } }
+      }
+    },
+    "settings.privacy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Privacy dashboard" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Panel de privacidad" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tableau de confidentialité" } }
+      }
+    },
+    "settings.accessibility" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Accessibility" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Accesibilidad" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Accessibilité" } }
+      }
+    },
+    "settings.models" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "On-device models" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Modelos en el dispositivo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Modèles sur l'appareil" } }
+      }
+    }
+  }
+}

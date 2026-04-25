@@ -1,0 +1,47 @@
+import Foundation
+
+/// Lightweight, observable status for any on-device model.
+public enum ModelStatus: Equatable, Sendable {
+    case idle
+    case downloading(progress: Double)
+    case ready
+    case running
+    case failed(message: String)
+
+    public var isReady: Bool {
+        if case .ready = self { return true }
+        return false
+    }
+
+    public var isBusy: Bool {
+        switch self {
+        case .downloading, .running: return true
+        default: return false
+        }
+    }
+
+    public var displayDescription: String {
+        switch self {
+        case .idle:
+            return NSLocalizedString("model.status.idle", value: "Idle", comment: "")
+        case .downloading(let p):
+            let pct = Int((p * 100).rounded())
+            return String(format: NSLocalizedString("model.status.downloading",
+                value: "Downloading… %d%%", comment: ""), pct)
+        case .ready:
+            return NSLocalizedString("model.status.ready", value: "Ready", comment: "")
+        case .running:
+            return NSLocalizedString("model.status.running", value: "Thinking…", comment: "")
+        case .failed(let message):
+            return String(format: NSLocalizedString("model.status.failed",
+                value: "Error: %@", comment: ""), message)
+        }
+    }
+}
+
+/// Records latency for each inference call, used by the Settings screen.
+public struct InferenceTelemetry: Sendable, Equatable {
+    public var lastLatencyMillis: Int = 0
+    public var totalCalls: Int = 0
+    public var lastError: String? = nil
+}
