@@ -94,20 +94,30 @@ public final class AppContainer: ObservableObject {
         return container
     }
 
-    /// Warm up all three on-device models in parallel. Network is only used
-    /// to fetch the model artifacts the first time; afterwards everything
-    /// runs offline.
+    /// Warm up all three on-device models. Network is only used to fetch the
+    /// model artifacts the first time; afterwards everything runs offline.
+    ///
+    /// Important: warm-ups run **sequentially**. The ZETIC SDK statically
+    /// links a C++ inference engine (`ggml`) whose model registry, file-handle
+    /// pool, and downloader state are not safe to mutate from multiple Swift
+    /// tasks at once. Three concurrent `ZeticMLangeModel(...)` constructors
+    /// produced a SIGSEGV at first launch (see crash report dated 2026-04-25
+    /// where two cooperative-pool tasks raced through `fread` / ggml init and
+    /// dereferenced a pointer whose bytes were ASCII string data). Doing one
+    /// at a time costs us a few seconds of background work but eliminates the
+    /// race entirely.
     public func warmUpModelsInBackground() {
         let pg = promptGuard
         let tr = triage
         let md = medical
         Task.detached(priority: .utility) {
+            // Give SwiftUI a moment to draw the first frame before we start
+            // hammering the SDK. Not strictly necessary, but it keeps the UI
+            // smooth on cold launch.
+            try? await Task.sleep(nanoseconds: 250_000_000)
+
             await pg.warmUp()
-        }
-        Task.detached(priority: .utility) {
             await tr.warmUp()
-        }
-        Task.detached(priority: .utility) {
             await md.warmUp()
         }
     }
