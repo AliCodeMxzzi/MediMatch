@@ -47,24 +47,28 @@ public actor MedicalLLMService {
         let name = AppConfig.ModelID.medicalAssistant
 
         do {
-            let m = try await Task.detached(priority: .utility) { () throws -> ZeticMLangeLLMModel in
-                try ZeticMLangeLLMModel(
-                    personalKey: key,
-                    name: name,
-                    modelMode: .RUN_AUTO,
-                    initOption: LLMInitOption(
-                        kvCacheCleanupPolicy: .CLEAN_UP_ON_FULL,
-                        nCtx: AppConfig.medicalLLMContextTokens
-                    ),
-                    onDownload: { progress in
-                        let p = Self.normalizeProgress(progress)
-                        onProgress(p)
-                        Task { [weak self] in
-                            await self?.setDownloadProgress(p)
+            let m = try await ZeticLLMInitGate.shared.run { () async throws -> ZeticMLangeLLMModel in
+                await ZeticModelPeers.releaseTriageForMedicalLoad()
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                return try await Task.detached(priority: .utility) { () throws -> ZeticMLangeLLMModel in
+                    try ZeticMLangeLLMModel(
+                        personalKey: key,
+                        name: name,
+                        modelMode: .RUN_AUTO,
+                        initOption: LLMInitOption(
+                            kvCacheCleanupPolicy: .CLEAN_UP_ON_FULL,
+                            nCtx: AppConfig.medicalLLMContextTokens
+                        ),
+                        onDownload: { progress in
+                            let p = Self.normalizeProgress(progress)
+                            onProgress(p)
+                            Task { [weak self] in
+                                await self?.setDownloadProgress(p)
+                            }
                         }
-                    }
-                )
-            }.value
+                    )
+                }.value
+            }
             self.model = m
             self.status = .ready
             self.telemetry.lastError = nil

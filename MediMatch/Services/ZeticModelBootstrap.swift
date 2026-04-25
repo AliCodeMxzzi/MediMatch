@@ -2,14 +2,15 @@ import Foundation
 
 /// Pre-warms only the **Prompt Guard** and **Triage** models at launch.
 ///
-/// The **Medical** (MedGemma) model is **not** prefetched: even after unloading
-/// Triage, initializing that 4B-class model on top of the prompt-guard graph
-/// still jetsams many iPhones. MedGemma is downloaded and loaded **only** when
-/// a triage run reaches the enrichment step, after we release the triage LLM
-/// from RAM (`TriageOrchestrator`).
+/// The **Medical** (MedGemma) model is not prefetched here: it is loaded on
+/// demand at triage **enrichment**, after the orchestrator unloads the triage
+/// LLM. `TriageLLMService` and `MedicalLLMService` use `ZeticModelPeers` and
+/// `ZeticLLMInitGate` so the two never construct at once and the peer is always
+/// evicted before the other downloads / loads, keeping a single large LLM in
+/// RAM at a time (weights for both can live on device).
 ///
-/// Sequential warm-up avoids concurrent ZETIC init races; see earlier crash
-/// reports from parallel `ZeticMLange*Model` constructors.
+/// Warm-up here stays sequential (Prompt Guard then Triage) to avoid ZETIC init
+/// races.
 public enum ZeticModelBootstrap {
 
     /// Pre-warms Prompt Guard + Triage only. Medical LLM is loaded on demand

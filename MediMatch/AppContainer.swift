@@ -59,6 +59,7 @@ public final class AppContainer: ObservableObject {
         let promptGuard = PromptGuardService()
         let triage      = TriageLLMService()
         let medical     = MedicalLLMService()
+        ZeticModelPeers.register(triage: triage, medical: medical)
         let orchestrator = TriageOrchestrator(
             promptGuard: promptGuard,
             triageLLM:   triage,

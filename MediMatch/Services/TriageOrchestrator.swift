@@ -179,7 +179,10 @@ public actor TriageOrchestrator {
         send(.stage(.enriching))
         await triageLLM.releaseFromMemory()
         await promptGuard.reset()
-        try? await Task.sleep(nanoseconds: 500_000_000)
+        for _ in 0..<3 { await Task.yield() }
+        // Give the system time to reclaim triage/weights before the heavy MedGemma
+        // constructor; pairs with `ZeticModelPeers` + `ZeticLLMInitGate` in services.
+        try? await Task.sleep(nanoseconds: 800_000_000)
 
         let activeMeds = await persistence.activeMedications()
         let enrichmentPrompt = PromptTemplates.medicalEnrichmentPrompt(

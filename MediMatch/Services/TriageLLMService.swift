@@ -51,24 +51,27 @@ public actor TriageLLMService {
         let name = AppConfig.ModelID.triageRecommender
 
         do {
-            let m = try await Task.detached(priority: .utility) { () throws -> ZeticMLangeLLMModel in
-                try ZeticMLangeLLMModel(
-                    personalKey: key,
-                    name: name,
-                    modelMode: .RUN_AUTO,
-                    initOption: LLMInitOption(
-                        kvCacheCleanupPolicy: .CLEAN_UP_ON_FULL,
-                        nCtx: AppConfig.triageLLMContextTokens
-                    ),
-                    onDownload: { progress in
-                        let p = Self.normalizeProgress(progress)
-                        onProgress(p)
-                        Task { [weak self] in
-                            await self?.setDownloadProgress(p)
+            let m = try await ZeticLLMInitGate.shared.run { () async throws -> ZeticMLangeLLMModel in
+                await ZeticModelPeers.releaseMedicalForTriageLoad()
+                return try await Task.detached(priority: .utility) { () throws -> ZeticMLangeLLMModel in
+                    try ZeticMLangeLLMModel(
+                        personalKey: key,
+                        name: name,
+                        modelMode: .RUN_AUTO,
+                        initOption: LLMInitOption(
+                            kvCacheCleanupPolicy: .CLEAN_UP_ON_FULL,
+                            nCtx: AppConfig.triageLLMContextTokens
+                        ),
+                        onDownload: { progress in
+                            let p = Self.normalizeProgress(progress)
+                            onProgress(p)
+                            Task { [weak self] in
+                                await self?.setDownloadProgress(p)
+                            }
                         }
-                    }
-                )
-            }.value
+                    )
+                }.value
+            }
             self.model = m
             self.status = .ready
             self.telemetry.lastError = nil
@@ -115,7 +118,7 @@ public actor TriageLLMService {
         generationTask = nil
         model?.forceDeinit()
         model = nil
-        status = .idle
+        status = .onDevice
     }
 
     /// Performs the model warm-up + cleanUp + run + token loop in a way that
