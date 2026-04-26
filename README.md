@@ -506,7 +506,7 @@ every track requirement:
 * MapKit's `MKLocalSearch` requires connectivity. Triage itself is fully
   offline; only the **Clinics** tab needs a connection to populate.
 * Triage answer quality is limited by the on-device model and the text of
-  `PromptTemplates.triagePrompt`; there is no server-side “smarter” fallback.
+  `PromptTemplates.triageConversationPrompt`; there is no server-side “smarter” fallback.
 * The medications scheduler currently supports daily / weekly / custom-hour
   cadence but not arbitrary cron-style rules.
 * This app does **not** implement encrypted backup. The brief lists it as

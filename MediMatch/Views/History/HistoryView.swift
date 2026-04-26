@@ -88,8 +88,11 @@ private struct HistoryDetailView: View {
                     .foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(NSLocalizedString("history.detail.input",
-                        value: "What you reported", comment: ""))
+                    Text(entry.result.inputSymptoms.contains("Assistant:")
+                         ? NSLocalizedString("history.detail.conversation",
+                            value: "Your conversation", comment: "")
+                         : NSLocalizedString("history.detail.input",
+                            value: "What you reported", comment: ""))
                         .font(.system(.headline, design: .rounded))
                     Text(entry.result.inputSymptoms)
                         .font(.system(.body, design: .rounded))

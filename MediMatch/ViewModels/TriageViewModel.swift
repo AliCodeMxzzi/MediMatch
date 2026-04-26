@@ -4,7 +4,7 @@ import Combine
 
 /// SwiftUI-facing view model for the triage flow.
 ///
-/// Holds the in-flight stream and exposes status, partial transcript, and
+/// Holds the in-flight stream and exposes status, chat, partial transcript, and
 /// final result to the view.
 @MainActor
 public final class TriageViewModel: ObservableObject {
@@ -22,6 +22,7 @@ public final class TriageViewModel: ObservableObject {
     @Published public var input: String = ""
     @Published public var selectedSymptomIds: Set<String> = []
     @Published public private(set) var phase: Phase = .idle
+    @Published public private(set) var chatTurns: [TriageChatTurn] = []
     @Published public private(set) var streamingText: String = ""
     @Published public private(set) var lastResult: TriageResult?
     @Published public private(set) var inlineWarning: String?
@@ -41,6 +42,15 @@ public final class TriageViewModel: ObservableObject {
         case .idle, .finished, .failed: return false
         default: return true
         }
+    }
+
+    public var hasConversation: Bool {
+        !chatTurns.isEmpty
+    }
+
+    /// `true` once the user has at least one assistant reply (for follow-up copy).
+    public var hasAssistantReply: Bool {
+        chatTurns.contains { $0.role == .assistant }
     }
 
     public var composedInput: String {
@@ -63,6 +73,9 @@ public final class TriageViewModel: ObservableObject {
     private let triage:       TriageLLMService
     private let settings:     AccessibilitySettings
 
+    private var streamAccum: String = ""
+    /// Raw text in the text editor before a send, for undo on cancel/failure.
+    private var pendingTypedBackup: String?
     private var pollTask: Task<Void, Never>?
     private var streamTask: Task<Void, Never>?
 
@@ -97,9 +110,12 @@ public final class TriageViewModel: ObservableObject {
         streamTask = nil
         input = ""
         selectedSymptomIds = []
+        chatTurns = []
+        streamAccum = ""
         streamingText = ""
         inlineWarning = nil
         lastResult = nil
+        pendingTypedBackup = nil
         phase = .idle
     }
 
@@ -107,16 +123,25 @@ public final class TriageViewModel: ObservableObject {
         let text = composedInput
         guard !text.isEmpty else { return }
         inlineWarning = nil
+        streamAccum = ""
         streamingText = ""
+        pendingTypedBackup = input
+        let newUser = TriageChatTurn(role: .user, text: text)
+        var pipeline = chatTurns
+        pipeline.append(newUser)
+        chatTurns.append(newUser)
+        input = ""
         phase = .validating
         streamTask?.cancel()
         let stream = orchestrator
         let locale = settings.preferredLocale
+        let pipelineSnapshot = pipeline
+        let userId = newUser.id
         streamTask = Task { [weak self] in
             guard let self else { return }
-            for await update in await stream.run(symptoms: text, locale: locale) {
+            for await update in await stream.run(chatTurns: pipelineSnapshot, locale: locale) {
                 if Task.isCancelled { break }
-                await self.apply(update)
+                await self.apply(update, userIdForFailure: userId)
             }
         }
     }
@@ -128,10 +153,22 @@ public final class TriageViewModel: ObservableObject {
         if case .finished = phase {
             return
         }
+        streamAccum = ""
+        streamingText = ""
+        if let last = chatTurns.last, last.role == .user {
+            chatTurns.removeLast()
+            if let backup = pendingTypedBackup {
+                input = backup
+            }
+            pendingTypedBackup = nil
+        }
         phase = .idle
     }
 
-    private func apply(_ update: TriageOrchestrator.StreamUpdate) async {
+    private func apply(
+        _ update: TriageOrchestrator.StreamUpdate,
+        userIdForFailure: UUID? = nil
+    ) async {
         switch update.kind {
         case .stage(let stage):
             switch stage {
@@ -139,12 +176,15 @@ public final class TriageViewModel: ObservableObject {
             case .classifying: phase = .classifying
             case .generating: phase = .generating(progress: streamingText)
             case .parsing:
-                streamingText = ""
+                streamAccum = TriageOrchestrator.displayableProsePrefix(from: streamAccum)
+                streamingText = streamAccum
                 phase = .parsing
             case .done:       break
             }
         case .token(let token):
-            streamingText.append(token)
+            streamAccum.append(token)
+            let visible = TriageOrchestrator.displayableProsePrefix(from: streamAccum)
+            streamingText = visible
             if case .generating = phase {
                 phase = .generating(progress: streamingText)
             }
@@ -152,8 +192,27 @@ public final class TriageViewModel: ObservableObject {
             inlineWarning = message
         case .finished(let result):
             lastResult = result
+            pendingTypedBackup = nil
+            if !result.summary.isEmpty {
+                chatTurns.append(TriageChatTurn(role: .assistant, text: result.summary))
+            } else {
+                let fallback = TriageOrchestrator.displayableProsePrefix(from: streamAccum)
+                if !fallback.isEmpty {
+                    chatTurns.append(TriageChatTurn(role: .assistant, text: fallback))
+                }
+            }
+            streamAccum = ""
+            streamingText = ""
             phase = .finished(result)
         case .failed(let message):
+            streamAccum = ""
+            streamingText = ""
+            if let uid = userIdForFailure, chatTurns.last?.id == uid, chatTurns.last?.role == .user {
+                chatTurns.removeLast()
+                if let backup = pendingTypedBackup { input = backup }
+                pendingTypedBackup = nil
+            }
+            inlineWarning = nil
             phase = .failed(message)
         }
     }

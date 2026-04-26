@@ -3,6 +3,8 @@ import SwiftUI
 struct TriageResultView: View {
     let result: TriageResult
     let highContrast: Bool
+    /// When `false`, the long prose is shown in chat only; this card is severity + next steps.
+    var showSummary: Bool = true
 
     private var displaySummary: String {
         TriageDisplayFormatting.summaryForDisplay(result.summary)
@@ -15,8 +17,12 @@ struct TriageResultView: View {
                     .font(.title2)
                     .foregroundStyle(Color.accentColor)
                     .accessibilityHidden(true)
-                Text(NSLocalizedString("triage.result.title",
-                    value: "Your triage result", comment: ""))
+                Text(showSummary
+                     ? NSLocalizedString("triage.result.title",
+                        value: "Your triage result", comment: "")
+                     : NSLocalizedString("triage.result.titleWithChat",
+                        value: "Triage & next steps",
+                        comment: "When main reply is above in chat"))
                     .font(.system(.title3, design: .rounded, weight: .semibold))
             }
             .padding(.bottom, Theme.spacingMD)
@@ -26,25 +32,27 @@ struct TriageResultView: View {
                           highContrast: highContrast)
                 .padding(.bottom, Theme.spacingMD)
 
-            VStack(alignment: .leading, spacing: Theme.spacingSM) {
-                Text(NSLocalizedString("triage.result.summaryLabel",
-                    value: "Summary", comment: ""))
-                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                Text(displaySummary)
-                    .font(.system(.body, design: .rounded))
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityLabel(Text(NSLocalizedString("a11y.summary",
-                        value: "Triage summary", comment: "")))
+            if showSummary {
+                VStack(alignment: .leading, spacing: Theme.spacingSM) {
+                    Text(NSLocalizedString("triage.result.summaryLabel",
+                        value: "Summary", comment: ""))
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Text(displaySummary)
+                        .font(.system(.body, design: .rounded))
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(Text(NSLocalizedString("a11y.summary",
+                            value: "Triage summary", comment: "")))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(Theme.spacingMD)
+                .background(
+                    RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
+                        .fill(Color(.tertiarySystemBackground))
+                )
+                .padding(.bottom, Theme.spacingLG)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Theme.spacingMD)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
-                    .fill(Color(.tertiarySystemBackground))
-            )
-            .padding(.bottom, Theme.spacingLG)
 
             if !result.recommendedActions.isEmpty {
                 sectionGroup(

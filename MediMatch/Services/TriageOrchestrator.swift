@@ -3,8 +3,9 @@ import Foundation
 /// Coordinates the triage pipeline:
 /// `HeuristicSafetyFilter → PromptGuardService → TriageLLMService`.
 ///
-/// Streaming model: callers receive incremental token chunks via a
-/// continuation, then a final `TriageResult` once parsing finishes.
+/// The LLM is prompted for a natural-language reply, then a machine-readable
+/// `MEDIMATCH_JSON` block for parsing. Streaming exposes safe prose to the UI
+/// as tokens (meta markers are hidden).
 public actor TriageOrchestrator {
 
     public struct StreamUpdate: Sendable {
@@ -47,12 +48,13 @@ public actor TriageOrchestrator {
         self.persistence  = persistence
     }
 
-    /// Streams the full triage pipeline.
-    public func run(symptoms: String, locale: Locale = .current) -> AsyncStream<StreamUpdate> {
+    /// Streams the full triage pipeline for a multi-turn chat. `turns` must
+    /// end with a new **user** message to answer.
+    public func run(chatTurns: [TriageChatTurn], locale: Locale = .current) -> AsyncStream<StreamUpdate> {
         AsyncStream { continuation in
             let task = Task {
                 await self.runPipeline(
-                    symptoms: symptoms,
+                    chatTurns: chatTurns,
                     locale: locale,
                     continuation: continuation
                 )
@@ -68,18 +70,31 @@ public actor TriageOrchestrator {
 
     // MARK: - Pipeline
 
+    private static let metaBlockMarker = "MEDIMATCH_JSON"
+
     private func runPipeline(
-        symptoms: String,
+        chatTurns: [TriageChatTurn],
         locale: Locale,
         continuation: AsyncStream<StreamUpdate>.Continuation
     ) async {
         let send: (StreamUpdate.Kind) -> Void = { kind in
             continuation.yield(StreamUpdate(kind: kind))
         }
+        let transcript = TriageChatTurn.makeTranscript(chatTurns)
+        let lastUserText: String
+        if let last = chatTurns.last, last.role == .user {
+            lastUserText = last.text
+        } else {
+            lastUserText = chatTurns.reversed().first { $0.role == .user }?.text ?? ""
+        }
+        if lastUserText.isEmpty {
+            send(.failed("Missing user message."))
+            return
+        }
 
         // 1) Heuristic safety filter (always-on first layer)
         send(.stage(.validating))
-        let heuristic = safetyFilter.evaluate(symptoms)
+        let heuristic = safetyFilter.evaluate(lastUserText)
         switch heuristic {
         case .block(let reason):
             send(.failed(reason))
@@ -92,7 +107,7 @@ public actor TriageOrchestrator {
 
         // 2) Prompt-guard classifier (symptom_input_processing)
         send(.stage(.classifying))
-        let inputVerdict = await promptGuard.classify(symptoms)
+        let inputVerdict = await promptGuard.classify(lastUserText)
         if (inputVerdict.label == .injection || inputVerdict.label == .unsafe)
             && inputVerdict.score >= unsafeThreshold {
             send(.failed(NSLocalizedString("guard.modelBlocked",
@@ -103,9 +118,13 @@ public actor TriageOrchestrator {
 
         // 3) Triage LLM (recommendation_system) - streaming
         send(.stage(.generating))
-        let baseSeverity = SymptomCatalog.baseSeverity(for: matchedCatalogIds(symptoms: symptoms))
-        let prompt = PromptTemplates.triagePrompt(
-            symptoms: symptoms,
+        let combinedForCatalog = chatTurns
+            .filter { $0.role == .user }
+            .map { $0.text }
+            .joined(separator: " ")
+        let baseSeverity = SymptomCatalog.baseSeverity(for: matchedCatalogIds(symptoms: combinedForCatalog))
+        let prompt = PromptTemplates.triageConversationPrompt(
+            transcript: transcript,
             locale: locale,
             baseSeverityHint: baseSeverity
         )
@@ -123,21 +142,47 @@ public actor TriageOrchestrator {
             return
         }
 
-        // 4) Parse JSON and apply condition_mapping cross-check
+        // 4) Parse machine JSON and apply condition_mapping cross-check
         send(.stage(.parsing))
+        let (displayProse, jsonSlice) = TriageOrchestrator.splitProseAndMetaBlock(fullText)
         var result: TriageResult
-        if let parsed = TriageOrchestrator.parseTriageJSON(fullText, originalInput: symptoms) {
-            result = parsed
+        if let json = jsonSlice, let parsed = TriageOrchestrator.parseTriageJSON(json, originalInput: transcript) {
+            result = TriageResult(
+                inputSymptoms: transcript,
+                severity: parsed.severity,
+                severityConfidence: parsed.severityConfidence,
+                summary: !displayProse.isEmpty ? displayProse : parsed.summary,
+                recommendedActions: parsed.recommendedActions,
+                redFlags: parsed.redFlags,
+                candidates: parsed.candidates,
+                medicalEnrichment: nil
+            )
+        } else if let parsed = TriageOrchestrator.parseTriageJSON(fullText, originalInput: transcript) {
+            // Legacy: model returned only JSON
+            result = TriageResult(
+                inputSymptoms: transcript,
+                severity: parsed.severity,
+                severityConfidence: parsed.severityConfidence,
+                summary: parsed.summary,
+                recommendedActions: parsed.recommendedActions,
+                redFlags: parsed.redFlags,
+                candidates: parsed.candidates,
+                medicalEnrichment: nil
+            )
         } else {
             send(.warning(NSLocalizedString("triage.parseFallback",
-                value: "Couldn't parse the model's structured output. Showing the raw summary.",
+                value: "Could not read structured follow-up from the model. The message above is still shown.",
                 comment: "")))
             result = TriageResult(
-                inputSymptoms: symptoms,
+                inputSymptoms: transcript,
                 severity: baseSeverity == .unknown ? .urgentCare : baseSeverity,
                 severityConfidence: 0.4,
-                summary: TriageOrchestrator.firstParagraph(fullText, fallback: NSLocalizedString("triage.noOutput",
-                    value: "No structured output was produced.", comment: "")),
+                summary: !displayProse.isEmpty
+                    ? displayProse
+                    : TriageOrchestrator.firstParagraph(
+                        TriageOrchestrator.stripCodeFences(fullText),
+                        fallback: NSLocalizedString("triage.noOutput",
+                            value: "No structured output was produced.", comment: "")),
                 recommendedActions: [
                     NSLocalizedString("triage.fallback.action.consult",
                         value: "Consult a licensed clinician.", comment: "")
@@ -184,6 +229,15 @@ public actor TriageOrchestrator {
         send(.finished(finalResult))
     }
 
+    /// Hides the machine JSON block (and the marker) while the model streams.
+    public static func displayableProsePrefix(from raw: String) -> String {
+        if let r = raw.range(of: Self.metaBlockMarker, options: .caseInsensitive) {
+            return String(raw[..<r.lowerBound])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return raw
+    }
+
     private func matchedCatalogIds(symptoms: String) -> Set<String> {
         let lower = symptoms.lowercased()
         var ids: Set<String> = []
@@ -198,9 +252,25 @@ public actor TriageOrchestrator {
 
     // MARK: - JSON Parsing
 
-    /// Parses the strict-JSON output the triage prompt requested. Tolerates
-    /// minor wrapper artifacts (model may add ```json fences despite our
-    /// instructions).
+    /// Splits the model output into the user-facing prose and an optional
+    /// JSON object after the `MEDIMATCH_JSON` marker.
+    static func splitProseAndMetaBlock(_ raw: String) -> (prose: String, json: String?) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let r = raw.range(of: Self.metaBlockMarker, options: .caseInsensitive) {
+            let before = String(raw[..<r.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+            var after = String(raw[r.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            if after.hasPrefix("\n") { after = String(after.dropFirst()).trimmingCharacters(in: .whitespacesAndNewlines) }
+            if after.hasPrefix("{") { return (before, after) }
+            if let b = after.range(of: "{"), let e = after.range(of: "}", options: .backwards) {
+                return (before, String(after[b.lowerBound..<e.upperBound]))
+            }
+            return (before, after.isEmpty ? nil : after)
+        }
+        return (trimmed, nil)
+    }
+
+    /// Parses the strict-JSON object for severity and lists. Tolerates minor
+    /// wrapper artifacts.
     static func parseTriageJSON(_ raw: String, originalInput: String) -> TriageResult? {
         let cleaned = stripCodeFences(raw)
         guard let jsonStart = cleaned.range(of: "{") else { return nil }

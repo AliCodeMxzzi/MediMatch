@@ -24,13 +24,24 @@ struct TriageView: View {
                     if let warning = viewModel.inlineWarning {
                         warningCard(warning)
                     }
+                    if viewModel.hasConversation || viewModel.isRunning {
+                        TriageChatTranscriptView(
+                            turns: viewModel.chatTurns,
+                            streamingProse: viewModel.streamingText,
+                            isResponding: viewModel.isRunning
+                        )
+                    }
                     SymptomInputView(viewModel: viewModel)
                     actionsRow
                     progressSection
                     triageInProgressSection
                     if case .finished(let result) = viewModel.phase {
-                        TriageResultView(result: result, highContrast: settings.highContrast)
-                            .dismissesKeyboardOnTap()
+                        TriageResultView(
+                            result: result,
+                            highContrast: settings.highContrast,
+                            showSummary: !viewModel.hasAssistantReply
+                        )
+                        .dismissesKeyboardOnTap()
                     }
                     if case .failed(let message) = viewModel.phase {
                         failureCard(message)
@@ -133,8 +144,12 @@ struct TriageView: View {
                     KeyboardDismissal.endEditing()
                     viewModel.reset()
                 }
-                PrimaryButton(NSLocalizedString("triage.submit",
-                    value: "Get triage", comment: ""),
+                PrimaryButton(
+                    viewModel.hasAssistantReply
+                        ? NSLocalizedString("triage.submit.continue",
+                            value: "Send reply", comment: "Triage follow-up message")
+                        : NSLocalizedString("triage.submit",
+                            value: "Get triage", comment: ""),
                     systemImage: "wand.and.sparkles",
                     isEnabled: viewModel.canSubmit) {
                     KeyboardDismissal.endEditing()
@@ -237,7 +252,7 @@ struct TriageView: View {
                 value: "Turning your symptoms into clear, plain-language advice.", comment: "")
         case .parsing:
             return NSLocalizedString("triage.progress.subtitle.parsing",
-                value: "Lining up severity, next steps, and what to watch for.", comment: "")
+                value: "Preparing the structured triage & next steps for you.", comment: "")
         default:
             return ""
         }

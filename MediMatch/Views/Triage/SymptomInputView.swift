@@ -16,8 +16,12 @@ struct SymptomInputView: View {
 
     private var descriptionField: some View {
         VStack(alignment: .leading, spacing: Theme.spacingSM) {
-            Text(NSLocalizedString("triage.input.title",
-                value: "Describe what you're feeling", comment: ""))
+            Text(viewModel.hasAssistantReply
+                 ? NSLocalizedString("triage.input.followup",
+                    value: "Add details or answer the questions above",
+                    comment: "Triage — follow-up input title")
+                 : NSLocalizedString("triage.input.title",
+                    value: "Describe what you're feeling", comment: ""))
                 .font(.system(.headline, design: .rounded))
                 .dismissesKeyboardOnTap()
             TextEditor(text: $viewModel.input)
