@@ -29,6 +29,8 @@ public actor PromptGuardService {
     private let tokenizer: PromptGuardTokenizer
     private var model: ZeticMLangeModel?
     private var warmUpTask: Task<Void, Never>?
+    /// Distinguish first-time network fetch vs. loading cached weights into RAM for progress UI.
+    private var warmUpIsLoadFromCache: Bool = false
 
     /// Block sizes for the input/attention tensors. Keep aligned with
     /// `PromptGuardTokenizer.sequenceLength`.
@@ -62,7 +64,10 @@ public actor PromptGuardService {
     /// detached task. That lets the actor keep servicing `status` reads and
     /// other calls (e.g. `classify`) during the download.
     private func performWarmUp(onProgress: @Sendable @escaping (Double) -> Void) async {
-        status = .downloading(progress: 0)
+        warmUpIsLoadFromCache = ZeticModelInstallState.hasPromptGuardWeightsInstalled()
+        status = warmUpIsLoadFromCache
+            ? .loading(progress: 0)
+            : .downloading(progress: 0)
         let key  = AppConfig.personalKeyForSDK()
         let name = AppConfig.ModelID.promptGuard
 
@@ -77,7 +82,7 @@ public actor PromptGuardService {
                         onProgress(p)
                         // Hop back to the actor; otherwise UI stays on "0%%" forever.
                         Task { [weak self] in
-                            await self?.setDownloadProgress(p)
+                            await self?.setModelLoadProgress(p)
                         }
                     }
                 )
@@ -85,10 +90,12 @@ public actor PromptGuardService {
             self.model = m
             self.status = .ready
             self.telemetry.lastError = nil
+            ZeticModelInstallState.markPromptGuardWeightsInstalled()
         } catch {
             self.model = nil
             self.status = .failed(message: Self.sanitize(error))
             self.telemetry.lastError = Self.sanitize(error)
+            ZeticModelInstallState.markPromptGuardWeightsCleared()
         }
     }
 
@@ -136,8 +143,11 @@ public actor PromptGuardService {
 
     // MARK: - Private helpers
 
-    private func setDownloadProgress(_ p: Double) {
-        status = .downloading(progress: Self.clamp01(p))
+    private func setModelLoadProgress(_ p: Double) {
+        let q = Self.clamp01(p)
+        status = warmUpIsLoadFromCache
+            ? .loading(progress: q)
+            : .downloading(progress: q)
     }
 
     private static func normalizeProgress(_ value: some BinaryFloatingPoint) -> Double {

@@ -313,6 +313,22 @@
         "es" : { "stringUnit" : { "state" : "translated", "value" : "Modelos en el dispositivo" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Modèles sur l'appareil" } }
       }
+    },
+    "model.status.loading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading… %d%%" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cargando… %d%%" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Chargement… %d%%" } }
+      }
+    },
+    "common.keyboard.done" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "OK" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "OK" } }
+      }
     }
   }
 }

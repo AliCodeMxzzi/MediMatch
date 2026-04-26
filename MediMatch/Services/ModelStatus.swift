@@ -3,7 +3,10 @@ import Foundation
 /// Lightweight, observable status for any on-device model.
 public enum ModelStatus: Equatable, Sendable {
     case idle
+    /// First-time (or re-) fetch from the network / SDK download pipeline.
     case downloading(progress: Double)
+    /// Weights are already in the on-device ZETIC cache; loading into memory after app relaunch.
+    case loading(progress: Double)
     case ready
     /// Weights are on device (ZETIC cache) but the model is not in RAM, so
     /// a later `warmUp()` is fast.
@@ -20,7 +23,7 @@ public enum ModelStatus: Equatable, Sendable {
 
     public var isBusy: Bool {
         switch self {
-        case .downloading, .running: return true
+        case .downloading, .loading, .running: return true
         default: return false
         }
     }
@@ -33,6 +36,10 @@ public enum ModelStatus: Equatable, Sendable {
             let pct = Int((p * 100).rounded())
             return String(format: NSLocalizedString("model.status.downloading",
                 value: "Downloading… %d%%", comment: ""), pct)
+        case .loading(let p):
+            let pct = Int((p * 100).rounded())
+            return String(format: NSLocalizedString("model.status.loading",
+                value: "Loading… %d%%", comment: "Model already on device; into RAM"), pct)
         case .ready:
             return NSLocalizedString("model.status.ready", value: "Ready", comment: "")
         case .onDevice:

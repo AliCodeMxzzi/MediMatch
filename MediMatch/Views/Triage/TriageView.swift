@@ -173,6 +173,7 @@ struct TriageView: View {
         switch status {
         case .idle:        return "circle.dotted"
         case .downloading: return "arrow.down.circle"
+        case .loading:     return "internaldrive"
         case .ready:       return "checkmark.seal"
         case .onDevice:    return "externaldrive.fill"
         case .running:     return "waveform"
@@ -187,6 +188,7 @@ struct TriageView: View {
         case .running:     return .accentColor
         case .failed:      return .red
         case .downloading: return .orange
+        case .loading:     return .teal
         case .idle:        return .secondary
         }
     }

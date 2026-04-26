@@ -126,6 +126,7 @@ struct ModelStatusView: View {
         case .running:     return .accentColor
         case .failed:      return .red
         case .downloading: return .orange
+        case .loading:     return .teal
         case .idle:        return .secondary
         }
     }

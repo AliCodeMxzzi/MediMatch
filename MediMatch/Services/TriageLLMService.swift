@@ -16,6 +16,7 @@ public actor TriageLLMService {
     private var model: ZeticMLangeLLMModel?
     private var generationTask: Task<Void, Never>?
     private var warmUpTask: Task<Void, Never>?
+    private var warmUpIsLoadFromCache: Bool = false
 
     public init() {}
 
@@ -46,7 +47,10 @@ public actor TriageLLMService {
     /// We run it on a detached task so the actor stays responsive to
     /// `status` reads and `stream(prompt:)` calls during the download.
     private func performWarmUp(onProgress: @Sendable @escaping (Double) -> Void) async {
-        status = .downloading(progress: 0)
+        warmUpIsLoadFromCache = ZeticModelInstallState.hasTriageWeightsInstalled()
+        status = warmUpIsLoadFromCache
+            ? .loading(progress: 0)
+            : .downloading(progress: 0)
         let key  = AppConfig.personalKeyForSDK()
         let name = AppConfig.ModelID.triageRecommender
 
@@ -64,7 +68,7 @@ public actor TriageLLMService {
                         let p = Self.normalizeProgress(progress)
                         onProgress(p)
                         Task { [weak self] in
-                            await self?.setDownloadProgress(p)
+                            await self?.setModelLoadProgress(p)
                         }
                     }
                 )
@@ -72,10 +76,12 @@ public actor TriageLLMService {
             self.model = m
             self.status = .ready
             self.telemetry.lastError = nil
+            ZeticModelInstallState.markTriageWeightsInstalled()
         } catch {
             self.model = nil
             self.status = .failed(message: sanitize(error))
             self.telemetry.lastError = sanitize(error)
+            ZeticModelInstallState.markTriageWeightsCleared()
         }
     }
 
@@ -159,8 +165,11 @@ public actor TriageLLMService {
         String(describing: error).replacingOccurrences(of: AppConfig.personalKeyForSDK(), with: "<redacted>")
     }
 
-    private func setDownloadProgress(_ p: Double) {
-        status = .downloading(progress: Self.clamp01(p))
+    private func setModelLoadProgress(_ p: Double) {
+        let q = Self.clamp01(p)
+        status = warmUpIsLoadFromCache
+            ? .loading(progress: q)
+            : .downloading(progress: q)
     }
 
     private static func normalizeProgress(_ value: some BinaryFloatingPoint) -> Double {
