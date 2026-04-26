@@ -32,7 +32,6 @@ struct TriageView: View {
                     TriageResultBottomView(
                         phase: viewModel.phase,
                         result: viewModel.lastResult,
-                        streamingText: viewModel.streamingText,
                         highContrast: settings.highContrast
                     )
                     triagePageFooter

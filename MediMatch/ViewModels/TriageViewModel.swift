@@ -22,7 +22,6 @@ public final class TriageViewModel: ObservableObject {
     @Published public var input: String = ""
     @Published public var selectedSymptomIds: Set<String> = []
     @Published public private(set) var phase: Phase = .idle
-    @Published public private(set) var streamingText: String = ""
     @Published public private(set) var lastResult: TriageResult?
     @Published public private(set) var inlineWarning: String?
 
@@ -103,7 +102,6 @@ public final class TriageViewModel: ObservableObject {
         input = ""
         selectedSymptomIds = []
         streamAccum = ""
-        streamingText = ""
         inlineWarning = nil
         lastResult = nil
         inFlightUserMessageId = nil
@@ -116,7 +114,6 @@ public final class TriageViewModel: ObservableObject {
         guard !text.isEmpty else { return }
         inlineWarning = nil
         streamAccum = ""
-        streamingText = ""
         lastResult = nil
         pendingTypedBackup = input
         let newUser = TriageChatTurn(role: .user, text: text)
@@ -146,7 +143,6 @@ public final class TriageViewModel: ObservableObject {
             return
         }
         streamAccum = ""
-        streamingText = ""
         inFlightUserMessageId = nil
         if isRunning, let backup = pendingTypedBackup {
             input = backup
@@ -164,20 +160,16 @@ public final class TriageViewModel: ObservableObject {
             switch stage {
             case .validating: phase = .validating
             case .classifying: phase = .classifying
-            case .generating: phase = .generating(progress: streamingText)
+            case .generating: phase = .generating(progress: "")
             case .parsing:
                 streamAccum = TriageOrchestrator.displayableProsePrefix(from: streamAccum)
-                streamingText = streamAccum
                 phase = .parsing
             case .done:       break
             }
         case .token(let token):
+            // Accumulate for the orchestrator only; the UI shows a spinner until
+            // a parsed `TriageResult` is ready (no raw token stream).
             streamAccum.append(token)
-            let visible = TriageOrchestrator.displayableProsePrefix(from: streamAccum)
-            streamingText = visible
-            if case .generating = phase {
-                phase = .generating(progress: streamingText)
-            }
         case .warning(let message):
             inlineWarning = message
         case .finished(let result):
@@ -185,11 +177,9 @@ public final class TriageViewModel: ObservableObject {
             inFlightUserMessageId = nil
             pendingTypedBackup = nil
             streamAccum = ""
-            streamingText = ""
             phase = .finished(result)
         case .failed(let message):
             streamAccum = ""
-            streamingText = ""
             if let uid = userIdForFailure, uid == inFlightUserMessageId, let backup = pendingTypedBackup {
                 input = backup
                 pendingTypedBackup = nil

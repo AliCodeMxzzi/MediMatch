@@ -1,11 +1,10 @@
 import SwiftUI
 
-/// Single result region at the **bottom** of the Triage tab: in-flight progress,
-/// optional streaming prose, then one structured `TriageResultView` (no chat bubbles).
+/// Single result region at the **bottom** of the Triage tab: a loading state while
+/// the model runs, then one structured `TriageResultView` (no raw token streaming).
 struct TriageResultBottomView: View {
     let phase: TriageViewModel.Phase
     let result: TriageResult?
-    let streamingText: String
     let highContrast: Bool
 
     @ViewBuilder
@@ -41,28 +40,19 @@ struct TriageResultBottomView: View {
                     .font(.system(.title3, design: .rounded, weight: .semibold))
             }
 
-            if streamingText.isEmpty {
-                HStack(alignment: .firstTextBaseline, spacing: Theme.spacingMD) {
-                    ProgressView()
-                        .tint(.accentColor)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(NSLocalizedString("triage.bottom.preparing",
-                            value: "Preparing your result…",
-                            comment: ""))
-                            .font(.system(.headline, design: .rounded))
-                        Text(detailMessage)
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+            HStack(alignment: .firstTextBaseline, spacing: Theme.spacingMD) {
+                ProgressView()
+                    .tint(.accentColor)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(NSLocalizedString("triage.bottom.preparing",
+                        value: "Preparing your result…",
+                        comment: ""))
+                        .font(.system(.headline, design: .rounded))
+                    Text(detailMessage)
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            } else {
-                Text(streamingText)
-                    .font(.system(.body, design: .rounded))
-                    .lineSpacing(6)
-                    .foregroundStyle(.primary)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(Theme.spacingMD)

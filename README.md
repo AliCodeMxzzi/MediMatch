@@ -39,8 +39,8 @@ emergency use. See [Disclaimer](#disclaimer).
 
 | Feature | Where | What it does |
 |---|---|---|
-| Symptom triage | `Views/Triage/` | Free-text + chip selector + voice input. **Single-pass** (one user message per run, no follow-up with the model). The LLM reply streams into **`TriageResultBottomView`**: one structured card at the **bottom** of the tab (summary, triage level, next steps, possible explanations with confidence, red flags, disclaimer). `MEDIMATCH_JSON` after the prose drives history. |
-| Streaming responses | `TriageLLMService` | Tokens stream into the UI via `AsyncThrowingStream` for a live feel. |
+| Symptom triage | `Views/Triage/` | Free-text + chip selector + voice input. **Single-pass** (one user message per run, no follow-up with the model). The UI shows a **spinner** while the on-device model runs, then a single structured **`TriageResultView`** at the **bottom** (summary, triage level, next steps, possible explanations with confidence, red flags, disclaimer)—no live token output on screen. `MEDIMATCH_JSON` after the prose drives history. |
+| LLM output | `TriageLLMService` | `AsyncThrowingStream` token API with early stop; the triage screen does **not** show raw tokens—only the final parsed result. |
 | Nearby clinics | `Views/Clinics/` | MapKit-based search for hospitals, urgent care, clinics, pharmacies near the user. |
 | Medication reminders | `Views/Medications/` | Local `UNUserNotificationCenter` reminders with hour-of-day scheduling. |
 | Local history | `Views/History/` | Last 50 triage sessions, browsable and deletable. |
@@ -557,8 +557,9 @@ every track requirement:
    inference" badge and the redacted personal key.
 4. **Triage tab** — type or dictate "fever and a sore throat for two days,
    no shortness of breath" and tap **Get triage**.
-5. Watch tokens stream in. The result should arrive in a few seconds and
-   include severity, conditions, advice, and red flags.
+5. After a short wait, the **full formatted result** appears at once (not
+   typewriter text). It should include severity, possible explanations, advice,
+   and red flags.
 6. **Clinics tab** — temporarily turn networking back on (MapKit needs it),
    show nearby urgent care, then turn it back off.
 7. **Medications tab** — add a sample medication with a 9 AM reminder and
