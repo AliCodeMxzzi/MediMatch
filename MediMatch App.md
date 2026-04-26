@@ -1,5 +1,7 @@
 # Implementation Prompt (Composite)
 
+> **Note (project status):** This document is the **original** Catalyst for Care + ZETIC challenge brief and composite generator instructions. The **shipped** Swift app in this repository is documented in [`README.md`](README.md). A few items from the original task list (for example: optional encrypted backup, Medgemma for `local_data_management`, a multi-step chat with the model, or training a custom on-device model) are **not** implemented or were replaced with a simpler design. Triage is **single-pass** with a single structured result view and `PromptTemplates.triageSinglePassPrompt`.
+
 ## User message
 
 2. MediMatch (Catalyst for Care + ZETIC)

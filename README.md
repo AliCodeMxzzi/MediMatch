@@ -24,13 +24,14 @@ emergency use. See [Disclaimer](#disclaimer).
 5. [Source tree](#source-tree)
 6. [ZETIC Melange wiring](#zetic-melange-wiring)
 7. [Privacy model](#privacy-model)
-8. [Build & run](#build--run)
-9. [Building from Windows (no Mac required)](#building-from-windows-no-mac-required)
-10. [Configuration](#configuration)
-11. [Localization & accessibility](#localization--accessibility)
-12. [Testing & demo script](#testing--demo-script)
-13. [Known limitations](#known-limitations)
-14. [Disclaimer](#disclaimer)
+8. [Get the app on your iPhone](#get-the-app-on-your-iphone)
+9. [Build & run (Xcode on Mac)](#build--run)
+10. [Without Xcode: pre-built IPA](#without-xcode-pre-built-ipa)
+11. [Configuration](#configuration)
+12. [Localization & accessibility](#localization--accessibility)
+13. [Testing & demo script](#testing--demo-script)
+14. [Known limitations](#known-limitations)
+15. [Disclaimer](#disclaimer)
 
 ---
 
@@ -38,7 +39,7 @@ emergency use. See [Disclaimer](#disclaimer).
 
 | Feature | Where | What it does |
 |---|---|---|
-| Symptom triage | `Views/Triage/` | Free-text + chip selector + voice input → a **single “Your triage”** panel: streamed conversational reply, then in the same card severity, **Practical next steps**, and any red flags (no duplicate second result card on screen). A machine-readable block after `MEDIMATCH_JSON` powers history and the structured fields. |
+| Symptom triage | `Views/Triage/` | Free-text + chip selector + voice input. **Single-pass** (one user message per run, no follow-up with the model). The LLM reply streams into **`TriageResultBottomView`**: one structured card at the **bottom** of the tab (summary, triage level, next steps, possible explanations with confidence, red flags, disclaimer). `MEDIMATCH_JSON` after the prose drives history. |
 | Streaming responses | `TriageLLMService` | Tokens stream into the UI via `AsyncThrowingStream` for a live feel. |
 | Nearby clinics | `Views/Clinics/` | MapKit-based search for hospitals, urgent care, clinics, pharmacies near the user. |
 | Medication reminders | `Views/Medications/` | Local `UNUserNotificationCenter` reminders with hour-of-day scheduling. |
@@ -95,7 +96,8 @@ emergency use. See [Disclaimer](#disclaimer).
 
 The triage pipeline is implemented in `Services/TriageOrchestrator.swift`
 (`run(chatTurns:locale:)`) and is the contract between the UI and the
-on-device models. Each step has a single owner:
+on-device models. The UI passes a single user `TriageChatTurn` per run; the
+orchestrator uses **only the latest** user message. Each step has a single owner:
 
 ```
 User text / chips / voice
@@ -139,7 +141,7 @@ User text / chips / voice
 └──────────────────────────────┘
         │
         ▼
-   TriageView: chat + one in-card result (prose, badge, next steps, disclaimer)
+   TriageView: input on top, single result card at bottom (no chat transcript)
 ```
 
 The UI subscribes to `TriageOrchestrator.run(chatTurns:locale:)` as an
@@ -164,7 +166,7 @@ The on-device **triage prompt** is built in `Data/PromptTemplates.swift` and is 
   - **`urgent_care`** — The user should see a clinician within about **24 hours** (worsening, unclear-but-concerning, not an obvious same-minute emergency).
   - **`emergency`** — Reserved for **high-acuity** patterns only (e.g. severe chest pain, stroke-like symptoms, significant breathing trouble, major bleeding, severe allergic reaction, altered consciousness, severe trauma, acute self-harm risk). The instructions tell the model **not** to use `emergency` for mild or moderate complaints, and to prefer `urgent_care` when torn between `urgent_care` and `emergency` unless clear danger signs are present.
 - **Copy & safety:** Do not *diagnose*; use cautious language (“may be consistent with…”). `recommended_actions` are concrete self-care and escalation steps; OTC mentions are general and defer to package directions or a pharmacist. `red_flags` list **only** serious warning signs (empty if none), not routine tips.
-- **Output shape:** The model writes a **short conversational reply** for the person, then a `MEDIMATCH_JSON` line and a JSON object the app uses for `TriageResult` (summary, `recommended_actions`, `red_flags`, `candidates`, severity). The main UI does **not** show raw JSON; the parser tolerates the split layout. The prompt and copy are the main levers for quality. Iteration is by editing the prompt unless the JSON schema changes.
+- **Output shape:** The model writes a **short single-pass reply** (see `triageSinglePassPrompt`) for the person, then a `MEDIMATCH_JSON` line and a JSON object the app uses for `TriageResult` (summary, `recommended_actions`, `red_flags`, `candidates`, severity). The main UI does **not** show raw JSON; the parser tolerates the split layout. Generation **stops early** once a complete JSON block is parsed (`TriageLLMService` + orchestrator) and a **max output token** cap in `AppConfig` bounds worst case. Iteration is by editing the prompt unless the JSON schema changes.
 
 Tuning the prompt is the highest-leverage way to improve user-perceived quality without swapping models. See also the [Disclaimer](#disclaimer).
 
@@ -182,26 +184,31 @@ MediMatch/
     ├── AppContainer.swift                # Dependency container (@MainActor).
     ├── Info.plist                        # Privacy strings, localizations.
     ├── Configuration/
-    │   └── AppConfig.swift               # Personal key, model IDs, disclaimer.
+    │   ├── AppConfig.swift               # Personal key, model IDs, max output tokens, disclaimer.
+    │   └── ZeticModelInstallState.swift  # Triage model cache on disk (first-run UX).
     ├── Theme/
     │   └── Theme.swift                   # Spacing, colors, severity palette.
     ├── Models/
     │   ├── Severity.swift                # Self-care → emergency.
     │   ├── Symptom.swift                 # Catalog entries.
     │   ├── TriageResult.swift            # Structured LLM output.
-    │   ├── TriageChatTurn.swift          # User/assistant turn in a triage thread.
+    │   ├── TriageChatTurn.swift          # One user message / pipeline; UI is not a chat log.
     │   ├── Clinic.swift                  # MapKit result wrapper.
     │   ├── Medication.swift              # Schedule + dosage.
     │   └── HistoryEntry.swift            # Past triage sessions.
     ├── Data/
     │   ├── SymptomCatalog.swift          # In-app symptom database (Step 2).
-    │   └── PromptTemplates.swift         # Triage (and any future) LLM prompts.
+    │   └── PromptTemplates.swift         # `triageSinglePassPrompt` and LLM system text.
+    ├── Utilities/
+    │   ├── KeyboardDismissal.swift      # Dismiss software keyboard.
+    │   └── TriageDisplayFormatting.swift # Prose cleanup for on-screen result text.
     ├── Services/
     │   ├── ModelStatus.swift             # idle/downloading/ready/running/failed.
     │   ├── HeuristicSafetyFilter.swift   # Regex prefilter.
     │   ├── PromptGuardTokenizer.swift    # Byte-level tokenizer placeholder.
     │   ├── PromptGuardService.swift      # llama_prompt_guard wrapper.
     │   ├── TriageLLMService.swift        # Triage LLM (streaming, AppConfig id).
+    │   ├── ZeticModelBootstrap.swift     # Pre-warm Prompt Guard + Triage at launch.
     │   ├── TriageOrchestrator.swift      # Heuristic → guard → triage → parse → guard → save.
     │   ├── PersistenceService.swift      # JSON in Application Support.
     │   ├── LocationService.swift         # CoreLocation.
@@ -217,9 +224,9 @@ MediMatch/
     │   └── SettingsViewModel.swift
     ├── Views/
     │   ├── Components/                   # PrimaryButton, ConfidenceBar, EmptyStateView.
-    │   ├── Triage/                       # TriageView, TriageChatTranscriptView, SymptomInputView, TriageResultView (history), …
+    │   ├── Triage/                       # TriageView, SymptomInputView, TriageResultBottomView, TriageResultView, …
     │   ├── Clinics/                      # ClinicsView, ClinicMapView.
-    │   ├── Medications/                  # MedicationsView, MedicationCard, MedicationFormView.
+    │   ├── Medications/                  # MedicationsView, MedicationCard, MedicationFormView (sheet; keyboard Done + scroll dismiss).
     │   ├── History/                      # HistoryView, HistoryDetailView.
     │   └── Settings/                     # SettingsView, PrivacyDashboardView,
     │                                     # AccessibilitySettingsView, ModelStatusView.
@@ -254,8 +261,9 @@ MediMatch/
 
 * `PromptGuardService.classify(_:)` — `model.run(inputs:)` with a `[Tensor]`
   pair (`token_ids`, `attention_mask`), interprets logits.
-* `TriageLLMService.stream(prompt:)` — `model.run(prompt:)` followed by a
-  `waitForNextToken` loop wrapped in `AsyncThrowingStream`.
+* `TriageLLMService.stream(prompt:shouldStopAfterAppending:)` — `model.run(prompt:)`,
+  `waitForNextToken` loop, optional **early stop** when `MEDIMATCH_JSON` is complete, plus
+  a **max generated token** cap (`AppConfig.triageLLMMaxOutputTokens`).
 
 ---
 
@@ -283,6 +291,24 @@ short version that matches the code:
 
 ---
 
+## Get the app on your iPhone
+
+Pick **one** path. You need an **iPhone on iOS 17+** and **internet the first time** you open the app (the ZETIC SDK downloads on-device model files). After that, triage can work offline once models are cached.
+
+| I have… | What to do |
+|--------|------------|
+| **A Mac with Xcode** | Follow **[Build & run (Xcode on Mac)](#build--run)** to open the project, sign with a **free Apple ID** (or paid team), and run on a **simulator** or a **real iPhone** over USB. |
+| **No Mac** (e.g. Windows, or a Mac where you do not use Xcode) | Use the **[pre-built IPA + Sideloadly](#without-xcode-pre-built-ipa-eg-windows--sideloadly)** path: the repo can build an unsigned `.ipa` in **GitHub Actions**; you download it, sign with your **free Apple ID** in **Sideloadly** (or **AltStore**), and install on your iPhone. |
+
+**After the app is installed (both paths):**
+
+1. Open MediMatch. Wait for the first run if models are downloading.
+2. Allow **microphone**, **Speech Recognition**, and **Location** when asked (you can change these later in iOS Settings).
+3. **Triage:** describe how you feel (and optional symptom chips) → **Get triage** → read the result at the bottom. **Clinics** needs network for search. **Medications** can schedule local reminders. **History** and **Settings** are all on-device.
+4. For a **judged demo** (airplane mode, each tab, etc.), use **[Testing & demo script](#testing--demo-script)**.
+
+---
+
 ## Build & run
 
 ### Requirements
@@ -294,7 +320,7 @@ short version that matches the code:
 * A real device is recommended for measuring inference latency. The simulator
   works for UI development but the underlying ML runtimes vary.
 
-### Steps
+### Steps (clone + open in Xcode)
 
 1. Clone or unzip the repository.
 2. Open `MediMatch.xcodeproj` in Xcode.
@@ -302,12 +328,33 @@ short version that matches the code:
    `https://github.com/zetic-ai/ZeticMLangeiOS.git` (**exact** version **1.6.0** in
    **Package Dependencies**). The package is already declared in the project; no
    manual `Package.swift` is required.
-4. Select the **MediMatch** scheme and a target device or simulator.
-5. ⌘R to build & run.
+4. Select the **MediMatch** scheme. Choose a run destination: **a simulator** (fastest
+   to try the UI) or **your iPhone** (see below; best for real triage speed and
+   on-device speech).
+5. Press **⌘R** (Product → Run) to build and launch.
 6. On first launch, accept the **microphone**, **speech recognition**, and
-   **location** prompts as desired. The first triage will block briefly
-   while ZETIC fetches and verifies model artifacts; subsequent runs are
-   cached.
+   **location** prompts as desired. The first full triage will take longer
+   while ZETIC fetches and verifies model artifacts; later runs are cached.
+
+### Run on a physical iPhone (USB)
+
+1. Connect the iPhone with a USB cable. Unlock the phone; tap **Trust** if asked.
+2. In Xcode, set the run destination to your device (it appears under the scheme).
+3. **Targets → MediMatch → Signing & Capabilities**
+   * Turn on **Automatically manage signing**.
+   * **Team:** pick an Apple ID. A **free** Apple ID is enough for personal
+     install; select **Add an Account…** in Xcode’s Settings/Accounts if needed.
+4. The first time you install, Xcode may register the device. If the build fails
+   with signing errors, read the error banner—often you must open
+   **Settings → General → VPN & Device Management** on the phone and **trust** the developer app, or
+   enable **Developer Mode** on the iPhone: **Settings → Privacy & Security →
+   Developer Mode** (iOS 16+), then restart if prompted.
+5. Run again from Xcode. The app only needs standard capabilities (no paid program
+   required for local development the way this project is configured).
+
+**Simulator note:** the UI works on the simulator, but the **ZETIC on-device
+models** and speech layers can behave differently from a real device. Use a real
+iPhone to judge **latency and mic** for demos.
 
 ### Bundle identifier & signing
 
@@ -325,7 +372,18 @@ sandboxed cache lives only inside the app container.
 
 ---
 
-## Building from Windows (no Mac required)
+## Without Xcode: pre-built IPA
+
+This path is for **anyone who does not build with Xcode** on their machine. The
+most common case is **Windows + [Sideloadly](https://sideloadly.io/)**; you can
+also use the same **unsigned `.ipa` artifact** on another OS if you have a tool
+that re-signs and installs the same way (e.g. [AltStore](https://altstore.io/)).
+
+> **If you are on a Mac and do use Xcode,** you can ignore this section and use
+> **[Build & run](#build--run)** to install directly. You can still use the GitHub
+> Actions IPA to share a build with a teammate who has no Mac.
+
+### Windows + GitHub Actions + Sideloadly (full walkthrough)
 
 Xcode itself is macOS-only, but you do not need to own a Mac to install
 MediMatch on your iPhone. The repository ships a GitHub Actions workflow that
@@ -531,7 +589,7 @@ every track requirement:
 * MapKit's `MKLocalSearch` requires connectivity. Triage itself is fully
   offline; only the **Clinics** tab needs a connection to populate.
 * Triage answer quality is limited by the on-device model and the text of
-  `PromptTemplates.triageConversationPrompt`; there is no server-side “smarter” fallback.
+  `PromptTemplates.triageSinglePassPrompt`; there is no server-side “smarter” fallback.
 * The medications scheduler currently supports daily / weekly / custom-hour
   cadence but not arbitrary cron-style rules.
 * This app does **not** implement encrypted backup. The brief lists it as
