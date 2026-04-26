@@ -1,7 +1,15 @@
 import SwiftUI
 
 struct MedicationFormView: View {
-    @Environment(\.dismiss) private var dismiss
+    private var keyboardDoneTitle: String {
+        NSLocalizedString("common.keyboard.done", value: "Done", comment: "Keyboard toolbar dismiss")
+    }
+
+    private enum FocusField: Hashable {
+        case name, dosage, notes
+    }
+
+    @FocusState private var focus: FocusField?
 
     @State private var name: String
     @State private var dosage: String
@@ -56,11 +64,18 @@ struct MedicationFormView: View {
                     value: "Basics", comment: "")) {
                     TextField(NSLocalizedString("medications.form.name",
                         value: "Name", comment: ""), text: $name)
+                        .focused($focus, equals: .name)
+                        .submitLabel(.done)
+                        .onSubmit { dismissKeyboard() }
                     TextField(NSLocalizedString("medications.form.dosage",
                         value: "Dosage (e.g. 500 mg)", comment: ""), text: $dosage)
+                        .focused($focus, equals: .dosage)
+                        .submitLabel(.done)
+                        .onSubmit { dismissKeyboard() }
                     TextField(NSLocalizedString("medications.form.notes",
                         value: "Notes", comment: ""), text: $notes, axis: .vertical)
                         .lineLimit(2...4)
+                        .focused($focus, equals: .notes)
                 }
 
                 Section(NSLocalizedString("medications.form.schedule",
@@ -101,7 +116,18 @@ struct MedicationFormView: View {
                             displayedComponents: .date)
                     }
                 }
+
+                Section {
+                    Color.clear
+                        .frame(minHeight: 120)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .contentShape(Rectangle())
+                        .accessibilityHidden(true)
+                        .onTapGesture { dismissKeyboard() }
+                }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(originalId == nil
                 ? NSLocalizedString("medications.form.titleNew", value: "New medication", comment: "")
                 : NSLocalizedString("medications.form.titleEdit", value: "Edit medication", comment: ""))
@@ -109,7 +135,10 @@ struct MedicationFormView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(NSLocalizedString("common.cancel",
-                        value: "Cancel", comment: ""), action: onCancel)
+                        value: "Cancel", comment: "")) {
+                        dismissKeyboard()
+                        onCancel()
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(NSLocalizedString("common.save",
@@ -118,11 +147,23 @@ struct MedicationFormView: View {
                     }
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(keyboardDoneTitle) {
+                        dismissKeyboard()
+                    }
+                }
             }
         }
     }
 
+    private func dismissKeyboard() {
+        focus = nil
+        KeyboardDismissal.endEditing()
+    }
+
     private func save() {
+        dismissKeyboard()
         let schedule = Schedule(
             cadence: cadence,
             customHours: Array(customHourSelections).sorted()
