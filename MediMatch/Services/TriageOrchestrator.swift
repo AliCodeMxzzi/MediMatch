@@ -72,6 +72,54 @@ public actor TriageOrchestrator {
 
     private static let metaBlockMarker = "MEDIMATCH_JSON"
 
+    /// Stops the token stream as soon as a well-formed `MEDIMATCH_JSON` object exists (avoids long post-JSON run-on).
+    public static func isTriageGenerationComplete(_ raw: String) -> Bool {
+        guard let r = raw.range(of: Self.metaBlockMarker, options: .caseInsensitive) else {
+            return false
+        }
+        var tail = String(raw[r.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        if tail.hasPrefix("```") {
+            if let idx = tail.firstIndex(of: "\n") {
+                tail = String(tail[tail.index(after: idx)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+        guard let open = tail.firstIndex(of: "{") else { return false }
+        var depth = 0
+        var inString = false
+        var escape = false
+        var i = open
+        while i < tail.endIndex {
+            let c = tail[i]
+            if inString {
+                if escape {
+                    escape = false
+                } else if c == "\\" {
+                    escape = true
+                } else if c == "\"" {
+                    inString = false
+                }
+            } else {
+                switch c {
+                case "\"":
+                    inString = true
+                case "{":
+                    depth += 1
+                case "}":
+                    depth -= 1
+                    if depth == 0 {
+                        let json = String(tail[open...i])
+                        guard let d = json.data(using: .utf8) else { return false }
+                        return (try? JSONSerialization.jsonObject(with: d, options: [.fragmentsAllowed])) is [String: Any]
+                    }
+                default:
+                    break
+                }
+            }
+            i = tail.index(after: i)
+        }
+        return false
+    }
+
     private func runPipeline(
         chatTurns: [TriageChatTurn],
         locale: Locale,
@@ -131,7 +179,10 @@ public actor TriageOrchestrator {
 
         var fullText = ""
         do {
-            for try await token in await triageLLM.stream(prompt: prompt) {
+            for try await token in await triageLLM.stream(
+                prompt: prompt,
+                shouldStopAfterAppending: { TriageOrchestrator.isTriageGenerationComplete($0) }
+            ) {
                 if Task.isCancelled { return }
                 fullText.append(token)
                 send(.token(token))
@@ -145,13 +196,14 @@ public actor TriageOrchestrator {
         // 4) Parse machine JSON and apply condition_mapping cross-check
         send(.stage(.parsing))
         let (displayProse, jsonSlice) = TriageOrchestrator.splitProseAndMetaBlock(fullText)
+        let polishedProse = TriageDisplayFormatting.compactRepeatedProse(displayProse)
         var result: TriageResult
         if let json = jsonSlice, let parsed = TriageOrchestrator.parseTriageJSON(json, originalInput: transcript) {
             result = TriageResult(
                 inputSymptoms: transcript,
                 severity: parsed.severity,
                 severityConfidence: parsed.severityConfidence,
-                summary: !displayProse.isEmpty ? displayProse : parsed.summary,
+                summary: !polishedProse.isEmpty ? polishedProse : TriageDisplayFormatting.compactRepeatedProse(parsed.summary),
                 recommendedActions: parsed.recommendedActions,
                 redFlags: parsed.redFlags,
                 candidates: parsed.candidates,
@@ -163,7 +215,7 @@ public actor TriageOrchestrator {
                 inputSymptoms: transcript,
                 severity: parsed.severity,
                 severityConfidence: parsed.severityConfidence,
-                summary: parsed.summary,
+                summary: TriageDisplayFormatting.compactRepeatedProse(parsed.summary),
                 recommendedActions: parsed.recommendedActions,
                 redFlags: parsed.redFlags,
                 candidates: parsed.candidates,
@@ -177,10 +229,11 @@ public actor TriageOrchestrator {
                 inputSymptoms: transcript,
                 severity: baseSeverity == .unknown ? .urgentCare : baseSeverity,
                 severityConfidence: 0.4,
-                summary: !displayProse.isEmpty
-                    ? displayProse
+                summary: !polishedProse.isEmpty
+                    ? polishedProse
                     : TriageOrchestrator.firstParagraph(
-                        TriageOrchestrator.stripCodeFences(fullText),
+                        TriageDisplayFormatting.compactRepeatedProse(
+                            TriageOrchestrator.stripCodeFences(fullText)),
                         fallback: NSLocalizedString("triage.noOutput",
                             value: "No structured output was produced.", comment: "")),
                 recommendedActions: [

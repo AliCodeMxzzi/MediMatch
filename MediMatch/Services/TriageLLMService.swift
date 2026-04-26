@@ -90,7 +90,12 @@ public actor TriageLLMService {
     }
 
     /// Streams tokens for `prompt`. Cancel by calling `stop()`.
-    public func stream(prompt: String) -> AsyncThrowingStream<String, Error> {
+    /// `shouldStopAfterAppending` is invoked with the full output so far (including the current
+    /// token) to end generation early without cancel noise — e.g. once `MEDIMATCH_JSON` + JSON is complete.
+    public func stream(
+        prompt: String,
+        shouldStopAfterAppending: @escaping @Sendable (String) -> Bool = { _ in false }
+    ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let task = Task.detached(priority: .userInitiated) { [weak self] in
                 guard let self else {
@@ -98,7 +103,11 @@ public actor TriageLLMService {
                     return
                 }
                 do {
-                    try await self.runStream(prompt: prompt, continuation: continuation)
+                    try await self.runStream(
+                        prompt: prompt,
+                        shouldStopAfterAppending: shouldStopAfterAppending,
+                        continuation: continuation
+                    )
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
@@ -130,7 +139,11 @@ public actor TriageLLMService {
 
     /// Performs the model warm-up + cleanUp + run + token loop in a way that
     /// yields each token to the continuation.
-    private func runStream(prompt: String, continuation: AsyncThrowingStream<String, Error>.Continuation) async throws {
+    private func runStream(
+        prompt: String,
+        shouldStopAfterAppending: @escaping @Sendable (String) -> Bool,
+        continuation: AsyncThrowingStream<String, Error>.Continuation
+    ) async throws {
         if model == nil { await warmUp() }
         guard let model else {
             throw NSError(domain: "MediMatch.Triage", code: 1, userInfo: [NSLocalizedDescriptionKey: "Triage model is unavailable."])
@@ -148,12 +161,22 @@ public actor TriageLLMService {
 
             // Token loop. Apple recommends running blocking SDK calls off the
             // main actor; we are inside Task.detached already.
+            var accumulated = ""
             while true {
                 if Task.isCancelled { break }
                 let result = model.waitForNextToken()
                 if result.generatedTokens == 0 { break }
                 if !result.token.isEmpty {
+                    accumulated.append(result.token)
                     continuation.yield(result.token)
+                    if shouldStopAfterAppending(accumulated) {
+                        try? model.cleanUp()
+                        break
+                    }
+                }
+                if result.generatedTokens >= AppConfig.triageLLMMaxOutputTokens {
+                    try? model.cleanUp()
+                    break
                 }
             }
             telemetry.lastLatencyMillis = Int(Date().timeIntervalSince(start) * 1000)

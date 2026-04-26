@@ -55,6 +55,10 @@ public enum AppConfig {
     /// Triage ZETIC LLM context (smaller = less RAM on device).
     public static let triageLLMContextTokens = 4096
 
+    /// Hard cap on **generated** tokens per reply (safety net if the model rambles).
+    /// Stops early as soon as `MEDIMATCH_JSON` + valid JSON is complete; this only bounds worst case.
+    public static let triageLLMMaxOutputTokens = 512
+
     /// Mapping requested by the prompt: `auto → RUN_AUTO`.
     public static let inferenceModeName = "RUN_AUTO"
 
