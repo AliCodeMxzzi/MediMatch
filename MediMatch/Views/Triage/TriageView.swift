@@ -28,21 +28,15 @@ struct TriageView: View {
                         TriageChatTranscriptView(
                             turns: viewModel.chatTurns,
                             streamingProse: viewModel.streamingText,
-                            isResponding: viewModel.isRunning
+                            isResponding: viewModel.isRunning,
+                            structuredResult: viewModel.lastResult,
+                            highContrast: settings.highContrast
                         )
                     }
                     SymptomInputView(viewModel: viewModel)
                     actionsRow
                     progressSection
                     triageInProgressSection
-                    if case .finished(let result) = viewModel.phase {
-                        TriageResultView(
-                            result: result,
-                            highContrast: settings.highContrast,
-                            showSummary: !viewModel.hasAssistantReply
-                        )
-                        .dismissesKeyboardOnTap()
-                    }
                     if case .failed(let message) = viewModel.phase {
                         failureCard(message)
                     }

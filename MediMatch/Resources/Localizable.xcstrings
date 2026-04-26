@@ -50,6 +50,14 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Décrivez ce que vous ressentez" } }
       }
     },
+    "triage.input.followup" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add details or answer the questions above" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Añade detalles o responde a lo de arriba" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ajoutez des détails ou répondez aux questions ci-dessus" } }
+      }
+    },
     "triage.input.placeholder" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -90,6 +98,14 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Évaluer" } }
       }
     },
+    "triage.submit.continue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Send reply" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Enviar respuesta" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Envoyer la réponse" } }
+      }
+    },
     "triage.cancel" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -120,6 +136,62 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "All inference runs on your device. No symptoms leave your phone." } },
         "es" : { "stringUnit" : { "state" : "translated", "value" : "Todo el análisis ocurre en tu dispositivo. Tus síntomas nunca salen del teléfono." } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout fonctionne sur votre appareil. Vos symptômes ne quittent jamais le téléphone." } }
+      }
+    },
+    "triage.chat.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your triage" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tu triaje" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Votre triage" } }
+      }
+    },
+    "triage.chat.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Read your reply, next steps, and when to seek care—together in one place." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Lee la respuesta, los pasos y cuándo acudir a urgencias—todo en un solo lugar." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réponse, prochaines étapes et quand consulter—au même endroit." } }
+      }
+    },
+    "triage.chat.thinking" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Composing a reply…" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Redactando una respuesta…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rédaction de la réponse…" } }
+      }
+    },
+    "triage.chat.assistantLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "MediMatch" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "MediMatch" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "MediMatch" } }
+      }
+    },
+    "triage.inChat.severityLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Triage level" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Nivel de triaje" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Niveau de triage" } }
+      }
+    },
+    "triage.inChat.nextSteps" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Practical next steps" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Próximos pasos prácticos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Prochaines mesures" } }
+      }
+    },
+    "triage.inChat.redFlags" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Seek care urgently if" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Acude a urgencias si" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Consultez en urgence si" } }
       }
     },
     "triage.streaming.title" : {
@@ -165,9 +237,9 @@
     "triage.progress.subtitle.parsing" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Lining up severity, next steps, and what to watch for." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Organizando gravedad, pasos a seguir y señales de alarma." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mise en forme de la gravité, des prochaines étapes et des signes à surveiller." } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preparing the structured triage & next steps for you." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Preparando el triaje y los pasos a seguir." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Préparation du triage et des prochaines étapes." } }
       }
     },
     "triage.progress.subtitle.enriching" : {

@@ -38,7 +38,7 @@ emergency use. See [Disclaimer](#disclaimer).
 
 | Feature | Where | What it does |
 |---|---|---|
-| Symptom triage | `Views/Triage/` | Free-text + chip selector + voice input → JSON triage result with urgency, conditions, advice, red flags. |
+| Symptom triage | `Views/Triage/` | Free-text + chip selector + voice input → a **single “Your triage”** panel: streamed conversational reply, then in the same card severity, **Practical next steps**, and any red flags (no duplicate second result card on screen). A machine-readable block after `MEDIMATCH_JSON` powers history and the structured fields. |
 | Streaming responses | `TriageLLMService` | Tokens stream into the UI via `AsyncThrowingStream` for a live feel. |
 | Nearby clinics | `Views/Clinics/` | MapKit-based search for hospitals, urgent care, clinics, pharmacies near the user. |
 | Medication reminders | `Views/Medications/` | Local `UNUserNotificationCenter` reminders with hour-of-day scheduling. |
@@ -94,7 +94,7 @@ emergency use. See [Disclaimer](#disclaimer).
 ## Routing: input → models → UI
 
 The triage pipeline is implemented in `Services/TriageOrchestrator.swift`
-(`run(input:locale:medications:)`) and is the contract between the UI and the
+(`run(chatTurns:locale:)`) and is the contract between the UI and the
 on-device models. Each step has a single owner:
 
 ```
@@ -115,20 +115,22 @@ User text / chips / voice
         ▼
 ┌──────────────────────────────┐
 │ 3. TriageLLMService (stream)  │  Task: recommendation_system
-│    gemma-3n-E2B-it            │  Streams JSON triage payload
+│    gemma-3n-E2B-it            │  Streams natural-language text, then
+│                               │  `MEDIMATCH_JSON` + structured fields.
 └──────────────────────────────┘
-        │  full JSON received
+        │  full text received
         ▼
 ┌──────────────────────────────┐
-│ 4. parseTriageJSON            │  Strips code fences, slices outermost
-│    (in TriageOrchestrator)    │  {...}, decodes TriageResult.
+│ 4. split + parseTriageJSON     │  User-visible prose vs JSON: strips the
+│    (in TriageOrchestrator)    │  block after `MEDIMATCH_JSON`, decodes
+│                               │  `TriageResult` (severity, actions, etc.).
 └──────────────────────────────┘
         │  parsed result
         ▼
 ┌──────────────────────────────┐
 │ 5. PromptGuardService (again) │  Task: condition_mapping
-│    llama_prompt_guard         │  Re-checks the model's own output for
-│                               │  unsafe phrasing before showing it.
+│    llama_prompt_guard         │  Re-checks the model's *visible* summary
+│                               │  text for unsafe phrasing before saving.
 └──────────────────────────────┘
         │  safe
         ▼
@@ -137,10 +139,10 @@ User text / chips / voice
 └──────────────────────────────┘
         │
         ▼
-   TriageView renders TriageResult + disclaimer
+   TriageView: chat + one in-card result (prose, badge, next steps, disclaimer)
 ```
 
-The UI subscribes to `TriageOrchestrator.run(symptoms:locale:)` as an
+The UI subscribes to `TriageOrchestrator.run(chatTurns:locale:)` as an
 `AsyncStream` of `StreamUpdate` (stages, streamed tokens, warnings, or a
 finished `TriageResult`).
 
@@ -162,7 +164,7 @@ The on-device **triage prompt** is built in `Data/PromptTemplates.swift` and is 
   - **`urgent_care`** — The user should see a clinician within about **24 hours** (worsening, unclear-but-concerning, not an obvious same-minute emergency).
   - **`emergency`** — Reserved for **high-acuity** patterns only (e.g. severe chest pain, stroke-like symptoms, significant breathing trouble, major bleeding, severe allergic reaction, altered consciousness, severe trauma, acute self-harm risk). The instructions tell the model **not** to use `emergency` for mild or moderate complaints, and to prefer `urgent_care` when torn between `urgent_care` and `emergency` unless clear danger signs are present.
 - **Copy & safety:** Do not *diagnose*; use cautious language (“may be consistent with…”). `recommended_actions` are concrete self-care and escalation steps; OTC mentions are general and defer to package directions or a pharmacist. `red_flags` list **only** serious warning signs (empty if none), not routine tips.
-- **JSON only:** The model must output parseable JSON matching `TriageResult` (summary, actions, red flags, candidate “possible explanations” with confidences). Iteration happens by editing the prompt, not the parser, unless the schema changes.
+- **Output shape:** The model writes a **short conversational reply** for the person, then a `MEDIMATCH_JSON` line and a JSON object the app uses for `TriageResult` (summary, `recommended_actions`, `red_flags`, `candidates`, severity). The main UI does **not** show raw JSON; the parser tolerates the split layout. The prompt and copy are the main levers for quality. Iteration is by editing the prompt unless the JSON schema changes.
 
 Tuning the prompt is the highest-leverage way to improve user-perceived quality without swapping models. See also the [Disclaimer](#disclaimer).
 
@@ -187,6 +189,7 @@ MediMatch/
     │   ├── Severity.swift                # Self-care → emergency.
     │   ├── Symptom.swift                 # Catalog entries.
     │   ├── TriageResult.swift            # Structured LLM output.
+    │   ├── TriageChatTurn.swift          # User/assistant turn in a triage thread.
     │   ├── Clinic.swift                  # MapKit result wrapper.
     │   ├── Medication.swift              # Schedule + dosage.
     │   └── HistoryEntry.swift            # Past triage sessions.
@@ -214,7 +217,7 @@ MediMatch/
     │   └── SettingsViewModel.swift
     ├── Views/
     │   ├── Components/                   # PrimaryButton, ConfidenceBar, EmptyStateView.
-    │   ├── Triage/                       # SymptomInputView, TriageResultView, TriageView.
+    │   ├── Triage/                       # TriageView, TriageChatTranscriptView, SymptomInputView, TriageResultView (history), …
     │   ├── Clinics/                      # ClinicsView, ClinicMapView.
     │   ├── Medications/                  # MedicationsView, MedicationCard, MedicationFormView.
     │   ├── History/                      # HistoryView, HistoryDetailView.
