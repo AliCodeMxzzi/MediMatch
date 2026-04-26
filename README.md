@@ -2,7 +2,7 @@
 
 > **On-device healthcare triage. Private by design.**
 >
-> A privacy-first iOS triage assistant that runs three on-device LLMs through
+> A privacy-first iOS triage assistant that runs on-device models through
 > [ZETIC's Melange platform](https://docs.zetic.ai). Symptoms are interpreted,
 > classified, and turned into care recommendations **without leaving the
 > phone**. Clinics, medications, and history are stored only in the app's
@@ -20,16 +20,17 @@ emergency use. See [Disclaimer](#disclaimer).
 1. [Feature overview](#feature-overview)
 2. [Architecture](#architecture)
 3. [Routing: input → models → UI](#routing-input--models--ui)
-4. [Source tree](#source-tree)
-5. [ZETIC Melange wiring](#zetic-melange-wiring)
-6. [Privacy model](#privacy-model)
-7. [Build & run](#build--run)
-8. [Building from Windows (no Mac required)](#building-from-windows-no-mac-required)
-9. [Configuration](#configuration)
-10. [Localization & accessibility](#localization--accessibility)
-11. [Testing & demo script](#testing--demo-script)
-12. [Known limitations](#known-limitations)
-13. [Disclaimer](#disclaimer)
+4. [Triage LLM prompt policy (severity & safety)](#triage-llm-prompt-policy-severity--safety)
+5. [Source tree](#source-tree)
+6. [ZETIC Melange wiring](#zetic-melange-wiring)
+7. [Privacy model](#privacy-model)
+8. [Build & run](#build--run)
+9. [Building from Windows (no Mac required)](#building-from-windows-no-mac-required)
+10. [Configuration](#configuration)
+11. [Localization & accessibility](#localization--accessibility)
+12. [Testing & demo script](#testing--demo-script)
+13. [Known limitations](#known-limitations)
+14. [Disclaimer](#disclaimer)
 
 ---
 
@@ -62,8 +63,7 @@ emergency use. See [Disclaimer](#disclaimer).
         (Tabs)            (@MainActor             ┌────────────────┐
                           ObservableObject)       │ PromptGuard    │ jathin-zetic/llama_prompt_guard
                                                   │ TriageLLM      │ google/gemma-3n-E2B-it
-                                                  │ MedicalLLM     │ Steve/Medgemma-1.5-4b-it
-                                                  │ Orchestrator   │ pipelines the above
+                                                  │ Orchestrator   │ coordinates guard + triage
                                                   │ Persistence    │ JSON in Application Support
                                                   │ ClinicFinder   │ MapKit local search
                                                   │ Location       │ CoreLocation
@@ -80,8 +80,7 @@ emergency use. See [Disclaimer](#disclaimer).
 ### Concurrency model
 
 * **Services that hold mutable state are `actor`s** (`PromptGuardService`,
-  `TriageLLMService`, `MedicalLLMService`, `TriageOrchestrator`,
-  `PersistenceService`, `ClinicFinder`).
+  `TriageLLMService`, `TriageOrchestrator`, `PersistenceService`, `ClinicFinder`).
 * **UI-facing state lives on `@MainActor`** (`AppContainer`, view models,
   `LocationService`, `SpeechRecognitionService`, `AccessibilitySettings`).
 * **Streaming** uses `AsyncThrowingStream`. Cancellation propagates via the
@@ -134,24 +133,16 @@ User text / chips / voice
         │  safe
         ▼
 ┌──────────────────────────────┐
-│ 6. MedicalLLMService          │  Task: local_data_management
-│    Medgemma-1.5-4b-it         │  Enriches with med-aware advice using
-│                               │  the user's local medication list +
-│                               │  recent history (never uploaded).
-└──────────────────────────────┘
-        │  enriched plain-text note
-        ▼
-┌──────────────────────────────┐
-│ 7. PersistenceService         │  Saves a HistoryEntry (capped at 50).
+│ 6. PersistenceService         │  Saves a HistoryEntry (capped at 50).
 └──────────────────────────────┘
         │
         ▼
-   TriageView renders TriageResult + enrichment + disclaimer
+   TriageView renders TriageResult + disclaimer
 ```
 
-The streaming variant `runStreaming(...)` exposes intermediate steps to the UI
-as `PipelineEvent` values (`.guardChecked`, `.token`, `.parsed`, `.enriched`,
-`.completed`, `.failed`) so the screen can update progressively.
+The UI subscribes to `TriageOrchestrator.run(symptoms:locale:)` as an
+`AsyncStream` of `StreamUpdate` (stages, streamed tokens, warnings, or a
+finished `TriageResult`).
 
 ### Why two passes through PromptGuard?
 
@@ -159,6 +150,21 @@ The `MediMatch App.md` extraction lists **two** classification tasks for
 `llama_prompt_guard`: `symptom_input_processing` (input safety) and
 `condition_mapping` (output / classification check). We honor both: once on
 the user's raw input, once on the LLM's serialized output.
+
+---
+
+## Triage LLM prompt policy (severity & safety)
+
+The on-device **triage prompt** is built in `Data/PromptTemplates.swift` and is the main control for *how* `google/gemma-3n-E2B-it` responds. The app is **not** a diagnostic tool; the prompt tells the model to:
+
+- **Severity buckets (JSON `severity` field):**
+  - **`self_care`** — Mild or typical symptoms where home care, rest, fluids, and watchful waiting are reasonable.
+  - **`urgent_care`** — The user should see a clinician within about **24 hours** (worsening, unclear-but-concerning, not an obvious same-minute emergency).
+  - **`emergency`** — Reserved for **high-acuity** patterns only (e.g. severe chest pain, stroke-like symptoms, significant breathing trouble, major bleeding, severe allergic reaction, altered consciousness, severe trauma, acute self-harm risk). The instructions tell the model **not** to use `emergency` for mild or moderate complaints, and to prefer `urgent_care` when torn between `urgent_care` and `emergency` unless clear danger signs are present.
+- **Copy & safety:** Do not *diagnose*; use cautious language (“may be consistent with…”). `recommended_actions` are concrete self-care and escalation steps; OTC mentions are general and defer to package directions or a pharmacist. `red_flags` list **only** serious warning signs (empty if none), not routine tips.
+- **JSON only:** The model must output parseable JSON matching `TriageResult` (summary, actions, red flags, candidate “possible explanations” with confidences). Iteration happens by editing the prompt, not the parser, unless the schema changes.
+
+Tuning the prompt is the highest-leverage way to improve user-perceived quality without swapping models. See also the [Disclaimer](#disclaimer).
 
 ---
 
@@ -186,15 +192,14 @@ MediMatch/
     │   └── HistoryEntry.swift            # Past triage sessions.
     ├── Data/
     │   ├── SymptomCatalog.swift          # In-app symptom database (Step 2).
-    │   └── PromptTemplates.swift         # Prompt builders for both LLMs.
+    │   └── PromptTemplates.swift         # Triage (and any future) LLM prompts.
     ├── Services/
     │   ├── ModelStatus.swift             # idle/downloading/ready/running/failed.
     │   ├── HeuristicSafetyFilter.swift   # Regex prefilter.
     │   ├── PromptGuardTokenizer.swift    # Byte-level tokenizer placeholder.
     │   ├── PromptGuardService.swift      # llama_prompt_guard wrapper.
     │   ├── TriageLLMService.swift        # gemma-3n-E2B-it wrapper (streaming).
-    │   ├── MedicalLLMService.swift       # Medgemma-1.5-4b-it wrapper.
-    │   ├── TriageOrchestrator.swift      # 7-step pipeline above.
+    │   ├── TriageOrchestrator.swift      # Heuristic → guard → triage → parse → guard → save.
     │   ├── PersistenceService.swift      # JSON in Application Support.
     │   ├── LocationService.swift         # CoreLocation.
     │   ├── ClinicFinder.swift            # MKLocalSearch.
@@ -229,9 +234,8 @@ MediMatch/
 | `symptom_input_processing` | `jathin-zetic/llama_prompt_guard` | `PromptGuardService` | `ZeticMLangeModel` |
 | `condition_mapping`        | `jathin-zetic/llama_prompt_guard` | `PromptGuardService` | `ZeticMLangeModel` |
 | `recommendation_system`    | `google/gemma-3n-E2B-it`          | `TriageLLMService`   | `ZeticMLangeLLMModel` |
-| `local_data_management`    | `Steve/Medgemma-1.5-4b-it`        | `MedicalLLMService`  | `ZeticMLangeLLMModel` |
 
-* **Inference mode** — `RUN_AUTO` for all three, as selected in the brief.
+* **Inference mode** — `RUN_AUTO` for these models, as selected in the brief.
 * **Personal key** — `dev_4c0af5ee7f3f43c8af9990d72f71a7d6`, stored only in
   `AppConfig.swift` and read by services on warm-up. The dashboard never
   echoes it; only a redacted form (`dev_4c0a…a7d6`) is rendered.
@@ -249,8 +253,6 @@ MediMatch/
   pair (`token_ids`, `attention_mask`), interprets logits.
 * `TriageLLMService.stream(prompt:)` — `model.run(prompt:)` followed by a
   `waitForNextToken` loop wrapped in `AsyncThrowingStream`.
-* `MedicalLLMService.enrich(prompt:)` — same streaming primitive but
-  collected into a single buffered string.
 
 ---
 
@@ -431,7 +433,6 @@ public enum AppConfig {
     public enum ModelID {
         public static let promptGuard       = "jathin-zetic/llama_prompt_guard"
         public static let triageRecommender = "google/gemma-3n-E2B-it"
-        public static let medicalAssistant  = "Steve/Medgemma-1.5-4b-it"
     }
 
     public static let inferenceModeName = "RUN_AUTO"
@@ -481,8 +482,8 @@ every track requirement:
    show that a local notification was scheduled.
 8. **History tab** — open the most recent entry to show that the result
    was preserved locally.
-9. **Settings → Models** — point out latency telemetry for each of the three
-   models.
+9. **Settings → Models** — point out latency telemetry for Prompt Guard and
+   Triage.
 
 ### Manual sanity checks
 
@@ -504,9 +505,8 @@ every track requirement:
   for your account requires one.
 * MapKit's `MKLocalSearch` requires connectivity. Triage itself is fully
   offline; only the **Clinics** tab needs a connection to populate.
-* The medical enrichment is bounded by `MedicalLLMService.maxTokens`
-  (default 256) to keep first-token latency low. Increase it if you want
-  longer differential discussions.
+* Triage answer quality is limited by the on-device model and the text of
+  `PromptTemplates.triagePrompt`; there is no server-side “smarter” fallback.
 * The medications scheduler currently supports daily / weekly / custom-hour
   cadence but not arbitrary cron-style rules.
 * This app does **not** implement encrypted backup. The brief lists it as
