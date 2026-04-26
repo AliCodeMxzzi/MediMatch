@@ -7,7 +7,7 @@ public enum ZeticModelInstallState {
     private static let promptGuardKey = "MediMatch.zetic.weightsInstalled.promptGuard"
     /// Per-model key so switching `triageRecommender` in `AppConfig` does not
     /// reuse the wrong "already cached" flag for a different artifact.
-    private static let triageKey = "MediMatch.zetic.weightsInstalled.triage.google.gemma-4-E2B-it"
+    private static let triageKey = "MediMatch.zetic.weightsInstalled.triage.gemma-3n-E2B-it"
 
     public static func hasPromptGuardWeightsInstalled() -> Bool {
         UserDefaults.standard.bool(forKey: promptGuardKey)

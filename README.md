@@ -62,7 +62,7 @@ emergency use. See [Disclaimer](#disclaimer).
    ContentView ──────────► ViewModels ──────────► Services (actors)
         (Tabs)            (@MainActor             ┌────────────────┐
                           ObservableObject)       │ PromptGuard    │ jathin-zetic/llama_prompt_guard
-                                                  │ TriageLLM      │ google/gemma-4-E2B-it
+                                                  │ TriageLLM      │ google/gemma-3n-E2B-it
                                                   │ Orchestrator   │ coordinates guard + triage
                                                   │ Persistence    │ JSON in Application Support
                                                   │ ClinicFinder   │ MapKit local search
@@ -115,7 +115,7 @@ User text / chips / voice
         ▼
 ┌──────────────────────────────┐
 │ 3. TriageLLMService (stream)  │  Task: recommendation_system
-│    gemma-4-E2B-it            │  Streams natural-language text, then
+│    gemma-3n-E2B-it            │  Streams natural-language text, then
 │                               │  `MEDIMATCH_JSON` + structured fields.
 └──────────────────────────────┘
         │  full text received
@@ -130,7 +130,7 @@ User text / chips / voice
 ┌──────────────────────────────┐
 │ 5. PromptGuardService (again) │  Task: condition_mapping
 │    llama_prompt_guard         │  Re-checks the model's *visible* summary
-│                               │  text for unsafe phrasing before saving.
+│                                │  text for unsafe phrasing before saving.
 └──────────────────────────────┘
         │  safe
         ▼
@@ -157,7 +157,7 @@ the user's raw input, once on the LLM's serialized output.
 
 ## Triage LLM prompt policy (severity & safety)
 
-The on-device **triage prompt** is built in `Data/PromptTemplates.swift` and is the main control for *how* `google/gemma-4-E2B-it` responds. The app is **not** a diagnostic tool; the prompt tells the model to:
+The on-device **triage prompt** is built in `Data/PromptTemplates.swift` and is the main control for *how* `google/gemma-3n-E2B-it` responds. The app is **not** a diagnostic tool; the prompt tells the model to:
 
 - **Severity buckets (JSON `severity` field):**
   - **`self_care`** — Mild or typical symptoms where home care, rest, fluids, and watchful waiting are reasonable.
@@ -236,7 +236,7 @@ MediMatch/
 |---|---|---|---|
 | `symptom_input_processing` | `jathin-zetic/llama_prompt_guard` | `PromptGuardService` | `ZeticMLangeModel` |
 | `condition_mapping`        | `jathin-zetic/llama_prompt_guard` | `PromptGuardService` | `ZeticMLangeModel` |
-| `recommendation_system`    | `google/gemma-4-E2B-it`          | `TriageLLMService`   | `ZeticMLangeLLMModel` |
+| `recommendation_system`    | `google/gemma-3n-E2B-it`         | `TriageLLMService`   | `ZeticMLangeLLMModel` |
 
 * **Inference mode** — `RUN_AUTO` for these models, as selected in the brief.
 * **Personal key** — `dev_4c0af5ee7f3f43c8af9990d72f71a7d6`, stored only in
@@ -440,11 +440,11 @@ public enum AppConfig {
 
     public enum ModelID {
         public static let promptGuard       = "jathin-zetic/llama_prompt_guard"
-        public static let triageRecommender = "google/gemma-4-E2B-it"
+        public static let triageRecommender = "google/gemma-3n-E2B-it"
     }
 
-    /// Pinned for this model name (see `AppConfig.swift` in repo).
-    public static let triageLLMModelVersion: Int? = 1
+    /// Optional: nil = latest for that name on Melange (see AppConfig.swift).
+    public static let triageLLMModelVersion: Int? = nil
 
     public static let inferenceModeName = "RUN_AUTO"
     public static let medicalDisclaimer = "MediMatch provides general guidance…"
@@ -464,7 +464,7 @@ nothing else in the codebase hard-codes those strings.
 > [supported LLM models](https://docs.zetic.ai/llm-inference/supported-models)).
 > A runtime error such as `httpError(404, "Not Found")` usually means that ID
 > is not available for your account yet—revert to the default
-> `google/gemma-4-E2B-it` (with `triageLLMModelVersion` as in `AppConfig`) or request access from ZETIC.
+> `google/gemma-3n-E2B-it` or request access from ZETIC.
 >
 > **`google/gemma-3-4b-it`:** valid on Hugging Face and [shown in ZETIC’s iOS LLM
 > examples](https://docs.zetic.ai/api-reference/ios/ZeticMLangeLLMModel), but it

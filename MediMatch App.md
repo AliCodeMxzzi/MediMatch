@@ -79,14 +79,14 @@ UI: Material Design or iOS Human Interface Guidelines
 - **condition_mapping**
   - `jathin-zetic/llama_prompt_guard`
 - **recommendation_system**
-  - `google/gemma-4-E2B-it`
+  - `google/gemma-3n-E2B-it`
 - **local_data_management**
   - `Steve/Medgemma-1.5-4b-it`
 
 ### Selected model details (resolved from catalog)
 
 - `jathin-zetic/llama_prompt_guard` — **llama_prompt_guard** (useCase: `nlp`, tags: text-classification)
-- `google/gemma-4-E2B-it` — **Gemma 4 E2B IT** (triage: text-generation; pin Melange `version` per `AppConfig.triageLLMModelVersion`)
+- `google/gemma-3n-E2B-it` — **gemma-3n-E2B-it** (useCase: `vision`, tags: text-generation, image-to-text, automatic-speech-recognition, summarization, translation, math, question-answering)
 - `Steve/Medgemma-1.5-4b-it` — **Medgemma-1.5-4b-it** (useCase: `vision`, tags: text-generation, question-answering, image-to-text)
 
 ## Instructions for your coding agent
