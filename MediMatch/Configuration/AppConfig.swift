@@ -36,10 +36,20 @@ public enum AppConfig {
         /// `symptom_input_processing` and `condition_mapping` checkpoints.
         public static let promptGuard = "jathin-zetic/llama_prompt_guard"
 
-        /// Gemma 3 4B Instruct — primary triage recommender LLM.
+        /// Gemma 3n E2B IT — primary triage recommender LLM (ZETIC Melange).
         /// Used for `recommendation_system`.
-        public static let triageRecommender = "google/gemma-3-4b-it"
+        ///
+        /// Note: Other Hugging Face IDs (e.g. `google/gemma-3-4b-it`) may 404 from
+        /// Melange until that build is enabled for your account in the dashboard.
+        public static let triageRecommender = "google/gemma-3n-E2B-it"
     }
+
+    // MARK: - Triage LLM (ZeticMLangeLLMModel)
+
+    /// Optional Melange **model version** index for the triage LLM (`nil` = latest
+    /// served for that `name`). Some registry entries (e.g. community ids like
+    /// `changgeun/gemma-4-E2B-it`) expect a concrete version; see ZETIC docs.
+    public static let triageLLMModelVersion: Int? = nil
 
     // MARK: - Inference modes
 

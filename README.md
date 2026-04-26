@@ -62,7 +62,7 @@ emergency use. See [Disclaimer](#disclaimer).
    ContentView ──────────► ViewModels ──────────► Services (actors)
         (Tabs)            (@MainActor             ┌────────────────┐
                           ObservableObject)       │ PromptGuard    │ jathin-zetic/llama_prompt_guard
-                                                  │ TriageLLM      │ google/gemma-3-4b-it
+                                                  │ TriageLLM      │ google/gemma-3n-E2B-it
                                                   │ Orchestrator   │ coordinates guard + triage
                                                   │ Persistence    │ JSON in Application Support
                                                   │ ClinicFinder   │ MapKit local search
@@ -115,7 +115,7 @@ User text / chips / voice
         ▼
 ┌──────────────────────────────┐
 │ 3. TriageLLMService (stream)  │  Task: recommendation_system
-│    gemma-3-4b-it              │  Streams natural-language text, then
+│    gemma-3n-E2B-it            │  Streams natural-language text, then
 │                               │  `MEDIMATCH_JSON` + structured fields.
 └──────────────────────────────┘
         │  full text received
@@ -157,7 +157,7 @@ the user's raw input, once on the LLM's serialized output.
 
 ## Triage LLM prompt policy (severity & safety)
 
-The on-device **triage prompt** is built in `Data/PromptTemplates.swift` and is the main control for *how* `google/gemma-3-4b-it` responds. The app is **not** a diagnostic tool; the prompt tells the model to:
+The on-device **triage prompt** is built in `Data/PromptTemplates.swift` and is the main control for *how* `google/gemma-3n-E2B-it` responds. The app is **not** a diagnostic tool; the prompt tells the model to:
 
 - **Severity buckets (JSON `severity` field):**
   - **`self_care`** — Mild or typical symptoms where home care, rest, fluids, and watchful waiting are reasonable.
@@ -201,7 +201,7 @@ MediMatch/
     │   ├── HeuristicSafetyFilter.swift   # Regex prefilter.
     │   ├── PromptGuardTokenizer.swift    # Byte-level tokenizer placeholder.
     │   ├── PromptGuardService.swift      # llama_prompt_guard wrapper.
-    │   ├── TriageLLMService.swift        # gemma-3-4b-it wrapper (streaming).
+    │   ├── TriageLLMService.swift        # Triage LLM (streaming, AppConfig id).
     │   ├── TriageOrchestrator.swift      # Heuristic → guard → triage → parse → guard → save.
     │   ├── PersistenceService.swift      # JSON in Application Support.
     │   ├── LocationService.swift         # CoreLocation.
@@ -236,7 +236,7 @@ MediMatch/
 |---|---|---|---|
 | `symptom_input_processing` | `jathin-zetic/llama_prompt_guard` | `PromptGuardService` | `ZeticMLangeModel` |
 | `condition_mapping`        | `jathin-zetic/llama_prompt_guard` | `PromptGuardService` | `ZeticMLangeModel` |
-| `recommendation_system`    | `google/gemma-3-4b-it`          | `TriageLLMService`   | `ZeticMLangeLLMModel` |
+| `recommendation_system`    | `google/gemma-3n-E2B-it`          | `TriageLLMService`   | `ZeticMLangeLLMModel` |
 
 * **Inference mode** — `RUN_AUTO` for these models, as selected in the brief.
 * **Personal key** — `dev_4c0af5ee7f3f43c8af9990d72f71a7d6`, stored only in
@@ -299,8 +299,8 @@ short version that matches the code:
 1. Clone or unzip the repository.
 2. Open `MediMatch.xcodeproj` in Xcode.
 3. Wait for **Swift Package Manager** to resolve
-   `https://github.com/zetic-ai/ZeticMLangeiOS.git` (pinned to 1.6.0,
-   up-to-next-minor). The package is already declared in the project; no
+   `https://github.com/zetic-ai/ZeticMLangeiOS.git` (**exact** version **1.6.0** in
+   **Package Dependencies**). The package is already declared in the project; no
    manual `Package.swift` is required.
 4. Select the **MediMatch** scheme and a target device or simulator.
 5. ⌘R to build & run.
@@ -345,7 +345,12 @@ builds an **unsigned `.ipa`** on a hosted macOS runner; you then re-sign that
 
 ### 1. Push this project to GitHub
 
-From the repo root on Windows (PowerShell):
+**If the repo already exists and you only need a new build:** from the project
+root, commit and `git push origin main` (or open a PR into `main`). Pushing
+to `main` starts the iOS build workflow—no Mac or Xcode on your side.
+
+**If you are importing the project for the first time**, from the repo root on
+Windows (PowerShell):
 
 ```powershell
 git init
@@ -435,8 +440,11 @@ public enum AppConfig {
 
     public enum ModelID {
         public static let promptGuard       = "jathin-zetic/llama_prompt_guard"
-        public static let triageRecommender = "google/gemma-3-4b-it"
+        public static let triageRecommender = "google/gemma-3n-E2B-it"
     }
+
+    /// Optional: nil = latest for that name on Melange (see AppConfig.swift).
+    public static let triageLLMModelVersion: Int? = nil
 
     public static let inferenceModeName = "RUN_AUTO"
     public static let medicalDisclaimer = "MediMatch provides general guidance…"
@@ -449,6 +457,20 @@ nothing else in the codebase hard-codes those strings.
 > **Note:** the personal key shipped here is the hackathon dev key from the
 > brief. **Do not** ship a production app with a literal key in source — load
 > it from a build setting or the Keychain instead.
+
+> **ZETIC model availability:** the triage `ModelID` must match a build that
+> Melange can resolve for your **personal key** (see the [Melange model
+> library](https://melange.zetic.ai/model-library) and
+> [supported LLM models](https://docs.zetic.ai/llm-inference/supported-models)).
+> A runtime error such as `httpError(404, "Not Found")` usually means that ID
+> is not available for your account yet—revert to the default
+> `google/gemma-3n-E2B-it` or request access from ZETIC.
+>
+> **`google/gemma-3-4b-it`:** valid on Hugging Face and [shown in ZETIC’s iOS LLM
+> examples](https://docs.zetic.ai/api-reference/ios/ZeticMLangeLLMModel), but it
+> must be **enabled for your personal key** on Melange. Use
+> `AppConfig.triageLLMModelVersion` (e.g. `1`) only if your model key documents
+> a specific version index; otherwise keep `nil` for “latest.”
 
 ---
 

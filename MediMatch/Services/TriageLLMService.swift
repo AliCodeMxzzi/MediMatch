@@ -1,7 +1,7 @@
 import Foundation
 import ZeticMLange
 
-/// Streaming triage LLM backed by `google/gemma-3-4b-it`.
+/// Streaming triage LLM (see `AppConfig.ModelID.triageRecommender`).
 ///
 /// Implements the `recommendation_system` task. Tokens stream in via an
 /// `AsyncThrowingStream`; the orchestrator parses the trailing JSON.
@@ -55,10 +55,14 @@ public actor TriageLLMService {
         let name = AppConfig.ModelID.triageRecommender
 
         do {
+            let version = AppConfig.triageLLMModelVersion
             let m = try await Task.detached(priority: .utility) { () throws -> ZeticMLangeLLMModel in
+                // Matches ZETIC automatic LLM init: version nil = latest for `name`.
+                // See https://docs.zetic.ai/api-reference/ios/ZeticMLangeLLMModel
                 try ZeticMLangeLLMModel(
                     personalKey: key,
                     name: name,
+                    version: version,
                     modelMode: .RUN_AUTO,
                     initOption: LLMInitOption(
                         kvCacheCleanupPolicy: .CLEAN_UP_ON_FULL,
