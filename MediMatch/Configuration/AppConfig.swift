@@ -36,9 +36,9 @@ public enum AppConfig {
         /// `symptom_input_processing` and `condition_mapping` checkpoints.
         public static let promptGuard = "jathin-zetic/llama_prompt_guard"
 
-        /// Gemma 3n E2B IT — primary triage recommender LLM.
+        /// Gemma 3 4B Instruct — primary triage recommender LLM.
         /// Used for `recommendation_system`.
-        public static let triageRecommender = "google/gemma-3n-E2B-it"
+        public static let triageRecommender = "google/gemma-3-4b-it"
     }
 
     // MARK: - Inference modes

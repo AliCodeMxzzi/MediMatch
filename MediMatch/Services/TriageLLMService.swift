@@ -1,7 +1,7 @@
 import Foundation
 import ZeticMLange
 
-/// Streaming triage LLM backed by `google/gemma-3n-E2B-it`.
+/// Streaming triage LLM backed by `google/gemma-3-4b-it`.
 ///
 /// Implements the `recommendation_system` task. Tokens stream in via an
 /// `AsyncThrowingStream`; the orchestrator parses the trailing JSON.

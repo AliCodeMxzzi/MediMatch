@@ -62,7 +62,7 @@ emergency use. See [Disclaimer](#disclaimer).
    ContentView ──────────► ViewModels ──────────► Services (actors)
         (Tabs)            (@MainActor             ┌────────────────┐
                           ObservableObject)       │ PromptGuard    │ jathin-zetic/llama_prompt_guard
-                                                  │ TriageLLM      │ google/gemma-3n-E2B-it
+                                                  │ TriageLLM      │ google/gemma-3-4b-it
                                                   │ Orchestrator   │ coordinates guard + triage
                                                   │ Persistence    │ JSON in Application Support
                                                   │ ClinicFinder   │ MapKit local search
@@ -115,7 +115,7 @@ User text / chips / voice
         ▼
 ┌──────────────────────────────┐
 │ 3. TriageLLMService (stream)  │  Task: recommendation_system
-│    gemma-3n-E2B-it            │  Streams natural-language text, then
+│    gemma-3-4b-it              │  Streams natural-language text, then
 │                               │  `MEDIMATCH_JSON` + structured fields.
 └──────────────────────────────┘
         │  full text received
@@ -157,7 +157,7 @@ the user's raw input, once on the LLM's serialized output.
 
 ## Triage LLM prompt policy (severity & safety)
 
-The on-device **triage prompt** is built in `Data/PromptTemplates.swift` and is the main control for *how* `google/gemma-3n-E2B-it` responds. The app is **not** a diagnostic tool; the prompt tells the model to:
+The on-device **triage prompt** is built in `Data/PromptTemplates.swift` and is the main control for *how* `google/gemma-3-4b-it` responds. The app is **not** a diagnostic tool; the prompt tells the model to:
 
 - **Severity buckets (JSON `severity` field):**
   - **`self_care`** — Mild or typical symptoms where home care, rest, fluids, and watchful waiting are reasonable.
@@ -201,7 +201,7 @@ MediMatch/
     │   ├── HeuristicSafetyFilter.swift   # Regex prefilter.
     │   ├── PromptGuardTokenizer.swift    # Byte-level tokenizer placeholder.
     │   ├── PromptGuardService.swift      # llama_prompt_guard wrapper.
-    │   ├── TriageLLMService.swift        # gemma-3n-E2B-it wrapper (streaming).
+    │   ├── TriageLLMService.swift        # gemma-3-4b-it wrapper (streaming).
     │   ├── TriageOrchestrator.swift      # Heuristic → guard → triage → parse → guard → save.
     │   ├── PersistenceService.swift      # JSON in Application Support.
     │   ├── LocationService.swift         # CoreLocation.
@@ -236,7 +236,7 @@ MediMatch/
 |---|---|---|---|
 | `symptom_input_processing` | `jathin-zetic/llama_prompt_guard` | `PromptGuardService` | `ZeticMLangeModel` |
 | `condition_mapping`        | `jathin-zetic/llama_prompt_guard` | `PromptGuardService` | `ZeticMLangeModel` |
-| `recommendation_system`    | `google/gemma-3n-E2B-it`          | `TriageLLMService`   | `ZeticMLangeLLMModel` |
+| `recommendation_system`    | `google/gemma-3-4b-it`          | `TriageLLMService`   | `ZeticMLangeLLMModel` |
 
 * **Inference mode** — `RUN_AUTO` for these models, as selected in the brief.
 * **Personal key** — `dev_4c0af5ee7f3f43c8af9990d72f71a7d6`, stored only in
@@ -435,7 +435,7 @@ public enum AppConfig {
 
     public enum ModelID {
         public static let promptGuard       = "jathin-zetic/llama_prompt_guard"
-        public static let triageRecommender = "google/gemma-3n-E2B-it"
+        public static let triageRecommender = "google/gemma-3-4b-it"
     }
 
     public static let inferenceModeName = "RUN_AUTO"
