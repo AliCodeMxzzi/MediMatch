@@ -19,6 +19,7 @@ struct SymptomInputView: View {
             Text(NSLocalizedString("triage.input.title",
                 value: "Describe what you're feeling", comment: ""))
                 .font(.system(.headline, design: .rounded))
+                .dismissesKeyboardOnTap()
             TextEditor(text: $viewModel.input)
                 .frame(minHeight: 120)
                 .padding(8)
@@ -80,6 +81,7 @@ struct SymptomInputView: View {
             }
             Spacer()
         }
+        .dismissesKeyboardOnTap()
     }
 
     private var symptomCatalog: some View {
@@ -87,6 +89,7 @@ struct SymptomInputView: View {
             Text(NSLocalizedString("triage.catalog.title",
                 value: "Or pick from common symptoms", comment: ""))
                 .font(.system(.headline, design: .rounded))
+                .dismissesKeyboardOnTap()
 
             ForEach(Symptom.BodySystem.allCases, id: \.self) { body in
                 if let symptoms = SymptomCatalog.byBodySystem[body], !symptoms.isEmpty {

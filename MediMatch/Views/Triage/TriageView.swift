@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct TriageView: View {
+    private var keyboardDoneTitle: String {
+        NSLocalizedString("common.keyboard.done", value: "Done", comment: "Keyboard toolbar dismiss")
+    }
     @EnvironmentObject private var settings: AccessibilitySettings
     @StateObject private var viewModel: TriageViewModel
 
@@ -27,17 +30,29 @@ struct TriageView: View {
                     triageInProgressSection
                     if case .finished(let result) = viewModel.phase {
                         TriageResultView(result: result, highContrast: settings.highContrast)
+                            .dismissesKeyboardOnTap()
                     }
                     if case .failed(let message) = viewModel.phase {
                         failureCard(message)
                     }
                     Spacer(minLength: 32)
+                    Color.clear
+                        .frame(minHeight: 160)
+                        .contentShape(Rectangle())
+                        .onTapGesture { KeyboardDismissal.endEditing() }
                 }
                 .padding(Theme.spacingMD)
             }
+            .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemBackground))
             .navigationTitle(NSLocalizedString("tab.triage", value: "Triage", comment: ""))
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(keyboardDoneTitle) { KeyboardDismissal.endEditing() }
+                }
+            }
         }
     }
 
@@ -58,6 +73,7 @@ struct TriageView: View {
             .foregroundStyle(Color.accentColor)
             .padding(.top, 4)
         }
+        .dismissesKeyboardOnTap()
     }
 
     private func warningCard(_ message: String) -> some View {
@@ -71,6 +87,7 @@ struct TriageView: View {
             RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
                 .fill(Color.orange.opacity(0.12))
         )
+        .dismissesKeyboardOnTap()
     }
 
     private func failureCard(_ message: String) -> some View {
@@ -86,6 +103,7 @@ struct TriageView: View {
                 .fixedSize(horizontal: false, vertical: true)
             SecondaryButton(NSLocalizedString("triage.failure.tryAgain",
                 value: "Try again", comment: "")) {
+                KeyboardDismissal.endEditing()
                 viewModel.reset()
             }
         }
@@ -94,6 +112,7 @@ struct TriageView: View {
             RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
                 .fill(Color.red.opacity(0.08))
         )
+        .dismissesKeyboardOnTap()
     }
 
     private var actionsRow: some View {
@@ -101,6 +120,7 @@ struct TriageView: View {
             if viewModel.isRunning {
                 SecondaryButton(NSLocalizedString("triage.cancel",
                     value: "Cancel", comment: ""), systemImage: "stop.circle") {
+                    KeyboardDismissal.endEditing()
                     viewModel.cancel()
                 }
                 PrimaryButton(NSLocalizedString("triage.thinking",
@@ -110,12 +130,14 @@ struct TriageView: View {
             } else {
                 SecondaryButton(NSLocalizedString("triage.reset",
                     value: "Clear", comment: ""), systemImage: "arrow.counterclockwise") {
+                    KeyboardDismissal.endEditing()
                     viewModel.reset()
                 }
                 PrimaryButton(NSLocalizedString("triage.submit",
                     value: "Get triage", comment: ""),
                     systemImage: "wand.and.sparkles",
                     isEnabled: viewModel.canSubmit) {
+                    KeyboardDismissal.endEditing()
                     viewModel.submit()
                 }
             }
@@ -132,6 +154,7 @@ struct TriageView: View {
             RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
                 .fill(Color(.secondarySystemBackground))
         )
+        .dismissesKeyboardOnTap()
     }
 
     private func modelStatusRow(label: String, status: ModelStatus) -> some View {
@@ -193,6 +216,7 @@ struct TriageView: View {
                 RoundedRectangle(cornerRadius: Theme.cornerRadiusCard, style: .continuous)
                     .fill(Color(.secondarySystemBackground))
             )
+            .dismissesKeyboardOnTap()
         default:
             EmptyView()
         }
