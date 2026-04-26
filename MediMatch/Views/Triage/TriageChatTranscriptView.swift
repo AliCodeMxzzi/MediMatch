@@ -31,8 +31,8 @@ struct TriageChatTranscriptView: View {
                         comment: "Triage — single unified result area title"))
                         .font(.system(.title3, design: .rounded, weight: .semibold))
                     Text(NSLocalizedString("triage.chat.subtitle",
-                        value: "Read your reply, next steps, and when to seek care—together in one place.",
-                        comment: "Triage panel subtitle (plain language)"))
+                        value: "One response: guidance, most likely explanations, and next steps.",
+                        comment: "Triage single-pass subtitle"))
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -230,6 +230,42 @@ private struct TriageInChatStructuredAddOn: View {
                     RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
                         .strokeBorder(Color(.separator).opacity(0.22), lineWidth: 0.5)
                 )
+            }
+            if !result.candidates.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(NSLocalizedString("triage.candidates",
+                        value: "Possible explanations", comment: ""))
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    VStack(alignment: .leading, spacing: Theme.spacingMD) {
+                        ForEach(result.candidates) { candidate in
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text(candidate.name)
+                                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                    Spacer(minLength: 8)
+                                    Text(String(format: "%d%%", Int((candidate.confidence * 100).rounded())))
+                                        .font(.system(.caption, design: .monospaced))
+                                        .foregroundStyle(.secondary)
+                                }
+                                ConfidenceBar(value: candidate.confidence)
+                                    .frame(height: 8)
+                                if !candidate.rationale.isEmpty {
+                                    Text(candidate.rationale)
+                                        .font(.system(.caption, design: .rounded))
+                                        .foregroundStyle(.secondary)
+                                        .lineSpacing(3)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .padding(Theme.spacingMD)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: Theme.cornerRadiusControl, style: .continuous)
+                                    .fill(Color(.tertiarySystemBackground))
+                            )
+                        }
+                    }
+                }
             }
             if !result.redFlags.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {

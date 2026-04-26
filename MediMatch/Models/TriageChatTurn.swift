@@ -1,6 +1,7 @@
 import Foundation
 
-/// A single line in the on-device triage chat (user or assistant text).
+/// One line in the triage UI. The model run uses only the latest user line;
+/// a completed run may show one user and one assistant line for display.
 public struct TriageChatTurn: Identifiable, Hashable, Sendable {
     public enum Role: String, Sendable {
         case user

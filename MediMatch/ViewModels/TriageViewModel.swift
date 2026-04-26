@@ -4,8 +4,8 @@ import Combine
 
 /// SwiftUI-facing view model for the triage flow.
 ///
-/// Holds the in-flight stream and exposes status, chat, partial transcript, and
-/// final result to the view.
+/// Single-shot: each run sends one user message to the on-device model and
+/// receives one triage result (no follow-up chat with the model).
 @MainActor
 public final class TriageViewModel: ObservableObject {
 
@@ -46,11 +46,6 @@ public final class TriageViewModel: ObservableObject {
 
     public var hasConversation: Bool {
         !chatTurns.isEmpty
-    }
-
-    /// `true` once the user has at least one assistant reply (for follow-up copy).
-    public var hasAssistantReply: Bool {
-        chatTurns.contains { $0.role == .assistant }
     }
 
     public var composedInput: String {
@@ -127,9 +122,9 @@ public final class TriageViewModel: ObservableObject {
         streamingText = ""
         pendingTypedBackup = input
         let newUser = TriageChatTurn(role: .user, text: text)
-        var pipeline = chatTurns
-        pipeline.append(newUser)
-        chatTurns.append(newUser)
+        // Single user message per run; previous back-and-forth is not passed to the model.
+        let pipeline = [newUser]
+        chatTurns = [newUser]
         input = ""
         phase = .validating
         streamTask?.cancel()

@@ -139,11 +139,8 @@ struct TriageView: View {
                     viewModel.reset()
                 }
                 PrimaryButton(
-                    viewModel.hasAssistantReply
-                        ? NSLocalizedString("triage.submit.continue",
-                            value: "Send reply", comment: "Triage follow-up message")
-                        : NSLocalizedString("triage.submit",
-                            value: "Get triage", comment: ""),
+                    NSLocalizedString("triage.submit",
+                        value: "Get triage", comment: ""),
                     systemImage: "wand.and.sparkles",
                     isEnabled: viewModel.canSubmit) {
                     KeyboardDismissal.endEditing()

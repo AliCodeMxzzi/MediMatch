@@ -3,8 +3,8 @@ import Foundation
 /// Coordinates the triage pipeline:
 /// `HeuristicSafetyFilter → PromptGuardService → TriageLLMService`.
 ///
-/// The LLM is prompted for a natural-language reply, then a machine-readable
-/// `MEDIMATCH_JSON` block for parsing. Streaming exposes safe prose to the UI
+/// The LLM receives a **single** user message per run, returns one reply and a
+/// machine-readable `MEDIMATCH_JSON` block. Streaming exposes safe prose to the UI
 /// as tokens (meta markers are hidden).
 public actor TriageOrchestrator {
 
@@ -48,8 +48,8 @@ public actor TriageOrchestrator {
         self.persistence  = persistence
     }
 
-    /// Streams the full triage pipeline for a multi-turn chat. `turns` must
-    /// end with a new **user** message to answer.
+    /// Streams the triage pipeline for one user message. Only the latest user
+    /// turn in `chatTurns` is sent to the model.
     public func run(chatTurns: [TriageChatTurn], locale: Locale = .current) -> AsyncStream<StreamUpdate> {
         AsyncStream { continuation in
             let task = Task {
@@ -128,17 +128,19 @@ public actor TriageOrchestrator {
         let send: (StreamUpdate.Kind) -> Void = { kind in
             continuation.yield(StreamUpdate(kind: kind))
         }
-        let transcript = TriageChatTurn.makeTranscript(chatTurns)
-        let lastUserText: String
-        if let last = chatTurns.last, last.role == .user {
-            lastUserText = last.text
-        } else {
-            lastUserText = chatTurns.reversed().first { $0.role == .user }?.text ?? ""
+        // Single-pass triage: only the latest user text is used (no multi-turn transcript).
+        let userMessages = chatTurns.filter { $0.role == .user }
+        guard let soleUser = userMessages.last else {
+            send(.failed("Missing user message."))
+            return
         }
+        let lastUserText = soleUser.text
         if lastUserText.isEmpty {
             send(.failed("Missing user message."))
             return
         }
+        let effectiveTurns = [soleUser]
+        let transcript = TriageChatTurn.makeTranscript(effectiveTurns)
 
         // 1) Heuristic safety filter (always-on first layer)
         send(.stage(.validating))
@@ -166,13 +168,9 @@ public actor TriageOrchestrator {
 
         // 3) Triage LLM (recommendation_system) - streaming
         send(.stage(.generating))
-        let combinedForCatalog = chatTurns
-            .filter { $0.role == .user }
-            .map { $0.text }
-            .joined(separator: " ")
-        let baseSeverity = SymptomCatalog.baseSeverity(for: matchedCatalogIds(symptoms: combinedForCatalog))
-        let prompt = PromptTemplates.triageConversationPrompt(
-            transcript: transcript,
+        let baseSeverity = SymptomCatalog.baseSeverity(for: matchedCatalogIds(symptoms: lastUserText))
+        let prompt = PromptTemplates.triageSinglePassPrompt(
+            userMessage: lastUserText,
             locale: locale,
             baseSeverityHint: baseSeverity
         )
