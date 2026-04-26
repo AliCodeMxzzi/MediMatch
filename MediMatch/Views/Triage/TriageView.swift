@@ -20,26 +20,22 @@ struct TriageView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.spacingLG) {
-                    headerCard
-                    if let warning = viewModel.inlineWarning {
-                        warningCard(warning)
-                    }
-                    if viewModel.hasConversation || viewModel.isRunning {
-                        TriageChatTranscriptView(
-                            turns: viewModel.chatTurns,
-                            streamingProse: viewModel.streamingText,
-                            isResponding: viewModel.isRunning,
-                            structuredResult: viewModel.lastResult,
-                            highContrast: settings.highContrast
-                        )
-                    }
                     SymptomInputView(viewModel: viewModel)
                     actionsRow
                     progressSection
-                    triageInProgressSection
+                    if let warning = viewModel.inlineWarning {
+                        warningCard(warning)
+                    }
                     if case .failed(let message) = viewModel.phase {
                         failureCard(message)
                     }
+                    TriageResultBottomView(
+                        phase: viewModel.phase,
+                        result: viewModel.lastResult,
+                        streamingText: viewModel.streamingText,
+                        highContrast: settings.highContrast
+                    )
+                    triagePageFooter
                     Spacer(minLength: 32)
                     Color.clear
                         .frame(minHeight: 160)
@@ -51,7 +47,7 @@ struct TriageView: View {
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemBackground))
             .navigationTitle(NSLocalizedString("tab.triage", value: "Triage", comment: ""))
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
@@ -61,24 +57,29 @@ struct TriageView: View {
         }
     }
 
-    private var headerCard: some View {
+    private var triagePageFooter: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(AppConfig.appName)
-                .font(.system(.title2, design: .rounded, weight: .bold))
-            Text(AppConfig.appTagline)
-                .font(.system(.subheadline, design: .rounded))
+                .font(.system(.caption, design: .rounded, weight: .semibold))
                 .foregroundStyle(.secondary)
-            HStack(spacing: 6) {
+            HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "shield.lefthalf.filled")
+                    .font(.caption)
+                Text(AppConfig.appTagline)
+                    .font(.system(.caption, design: .rounded))
+            }
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "lock.fill")
+                    .font(.caption2)
                 Text(NSLocalizedString("triage.privacy.note",
                     value: "All inference runs on your device. No symptoms leave your phone.",
                     comment: ""))
-                    .font(.caption)
+                    .font(.system(.caption2, design: .rounded))
             }
-            .foregroundStyle(Color.accentColor)
-            .padding(.top, 4)
         }
-        .dismissesKeyboardOnTap()
+        .foregroundStyle(.tertiary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, Theme.spacingMD)
     }
 
     private func warningCard(_ message: String) -> some View {
@@ -199,53 +200,4 @@ struct TriageView: View {
         }
     }
 
-    @ViewBuilder
-    private var triageInProgressSection: some View {
-        switch viewModel.phase {
-        case .validating, .classifying, .generating, .parsing:
-            VStack(alignment: .leading, spacing: Theme.spacingMD) {
-                HStack(alignment: .firstTextBaseline, spacing: Theme.spacingMD) {
-                    ProgressView()
-                        .tint(.accentColor)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(NSLocalizedString("triage.progress.title",
-                            value: "Working on your triage", comment: ""))
-                            .font(.system(.headline, design: .rounded))
-                        Text(triageProgressSubtitle)
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Theme.spacingMD)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.cornerRadiusCard, style: .continuous)
-                    .fill(Color(.secondarySystemBackground))
-            )
-            .dismissesKeyboardOnTap()
-        default:
-            EmptyView()
-        }
-    }
-
-    private var triageProgressSubtitle: String {
-        switch viewModel.phase {
-        case .validating:
-            return NSLocalizedString("triage.progress.subtitle.validating",
-                value: "Checking that we can help with what you shared.", comment: "")
-        case .classifying:
-            return NSLocalizedString("triage.progress.subtitle.classifying",
-                value: "Running a quick safety check on your text.", comment: "")
-        case .generating:
-            return NSLocalizedString("triage.progress.subtitle.generating",
-                value: "Turning your symptoms into clear, plain-language advice.", comment: "")
-        case .parsing:
-            return NSLocalizedString("triage.progress.subtitle.parsing",
-                value: "Preparing the structured triage & next steps for you.", comment: "")
-        default:
-            return ""
-        }
-    }
 }

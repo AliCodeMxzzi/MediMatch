@@ -22,7 +22,6 @@ public final class TriageViewModel: ObservableObject {
     @Published public var input: String = ""
     @Published public var selectedSymptomIds: Set<String> = []
     @Published public private(set) var phase: Phase = .idle
-    @Published public private(set) var chatTurns: [TriageChatTurn] = []
     @Published public private(set) var streamingText: String = ""
     @Published public private(set) var lastResult: TriageResult?
     @Published public private(set) var inlineWarning: String?
@@ -42,10 +41,6 @@ public final class TriageViewModel: ObservableObject {
         case .idle, .finished, .failed: return false
         default: return true
         }
-    }
-
-    public var hasConversation: Bool {
-        !chatTurns.isEmpty
     }
 
     public var composedInput: String {
@@ -69,6 +64,8 @@ public final class TriageViewModel: ObservableObject {
     private let settings:     AccessibilitySettings
 
     private var streamAccum: String = ""
+    /// Set while a run is in progress; used for cancel / failure restore.
+    private var inFlightUserMessageId: UUID?
     /// Raw text in the text editor before a send, for undo on cancel/failure.
     private var pendingTypedBackup: String?
     private var pollTask: Task<Void, Never>?
@@ -105,11 +102,11 @@ public final class TriageViewModel: ObservableObject {
         streamTask = nil
         input = ""
         selectedSymptomIds = []
-        chatTurns = []
         streamAccum = ""
         streamingText = ""
         inlineWarning = nil
         lastResult = nil
+        inFlightUserMessageId = nil
         pendingTypedBackup = nil
         phase = .idle
     }
@@ -120,11 +117,11 @@ public final class TriageViewModel: ObservableObject {
         inlineWarning = nil
         streamAccum = ""
         streamingText = ""
+        lastResult = nil
         pendingTypedBackup = input
         let newUser = TriageChatTurn(role: .user, text: text)
-        // Single user message per run; previous back-and-forth is not passed to the model.
+        inFlightUserMessageId = newUser.id
         let pipeline = [newUser]
-        chatTurns = [newUser]
         input = ""
         phase = .validating
         streamTask?.cancel()
@@ -150,11 +147,9 @@ public final class TriageViewModel: ObservableObject {
         }
         streamAccum = ""
         streamingText = ""
-        if let last = chatTurns.last, last.role == .user {
-            chatTurns.removeLast()
-            if let backup = pendingTypedBackup {
-                input = backup
-            }
+        inFlightUserMessageId = nil
+        if isRunning, let backup = pendingTypedBackup {
+            input = backup
             pendingTypedBackup = nil
         }
         phase = .idle
@@ -187,26 +182,19 @@ public final class TriageViewModel: ObservableObject {
             inlineWarning = message
         case .finished(let result):
             lastResult = result
+            inFlightUserMessageId = nil
             pendingTypedBackup = nil
-            if !result.summary.isEmpty {
-                chatTurns.append(TriageChatTurn(role: .assistant, text: result.summary))
-            } else {
-                let fallback = TriageOrchestrator.displayableProsePrefix(from: streamAccum)
-                if !fallback.isEmpty {
-                    chatTurns.append(TriageChatTurn(role: .assistant, text: fallback))
-                }
-            }
             streamAccum = ""
             streamingText = ""
             phase = .finished(result)
         case .failed(let message):
             streamAccum = ""
             streamingText = ""
-            if let uid = userIdForFailure, chatTurns.last?.id == uid, chatTurns.last?.role == .user {
-                chatTurns.removeLast()
-                if let backup = pendingTypedBackup { input = backup }
+            if let uid = userIdForFailure, uid == inFlightUserMessageId, let backup = pendingTypedBackup {
+                input = backup
                 pendingTypedBackup = nil
             }
+            inFlightUserMessageId = nil
             inlineWarning = nil
             phase = .failed(message)
         }
